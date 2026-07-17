@@ -7,20 +7,125 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Report {
-  id           String   @id @default(cuid())
-  title        String
-  year         Int
-  month        Int
-  author       String
-  department   String?
-  summary      String?
-  achievements String?
-  issues       String?
-  nextPlan     String?
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+enum Role {
+  ADMIN
+  USER
+}
 
-  @@index([year, month])
+enum RatingLevel {
+  EXCELLENT // 大変良い
+  GOOD // 良い
+  NORMAL // 普通
+  SLIGHTLY_BAD // やや悪い
+  BAD // 悪い
+}
+
+enum TechCategory {
+  LANGUAGE // 言語
+  FRAMEWORK // FW
+  DATABASE // DB
+  TOOL // ソフトウェア/ツール
+  OS_ENV // OS/クラウド/開発環境
+}
+
+model User {
+  id               String    @id @default(cuid())
+  loginId          String    @unique
+  passwordHash     String
+  name             String
+  role             Role      @default(USER)
+  email            String?
+  isActive         Boolean   @default(true)
+  failedLoginCount Int       @default(0)
+  lastFailedAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  reports              Report[]
+  notificationsAboutMe Notification[] @relation("NotificationRelatedUser")
+}
+
+model Notification {
+  id             String   @id @default(cuid())
+  message        String
+  relatedUserId  String?
+  relatedUser    User?    @relation("NotificationRelatedUser", fields: [relatedUserId], references: [id], onDelete: SetNull)
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model Report {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  submittedAt DateTime // 提出日
+  targetYear  Int // 対象月(年)
+  targetMonth Int // 対象月(月)
+
+  gender           String?
+  age              Int?
+  experienceYears  Int? // 経験年数
+
+  clientCompany String // 参画先企業
+  workLocation  String // 作業場所
+
+  workDays     Int? // 月間実労働 日数
+  workHours    Float? // 月間実労働 時間
+  teleworkDays Int? // テレワーク日数
+  onsiteDays   Int? // 現場日数
+
+  projectName             String // プロジェクト名/作業内容の見出し
+  projectPeriodStartYear  Int?
+  projectPeriodStartMonth Int?
+  projectPeriodOngoing    Boolean @default(true) // 現在も継続中か
+  projectPeriodEndYear    Int?
+  projectPeriodEndMonth   Int?
+  projectPeriodMonths     Int? // 期間(ヶ月数)
+  workContent             String  @db.Text // 作業内容
+  devProcesses            String[] // 開発工程(顧客折衝〜保守運用の選択済みラベル)
+
+  deliverables String? @db.Text // 成果物
+  troubles     String? @db.Text // 今月の困った点と対応・解決方法
+  goodPoints   String? @db.Text // 今月の良かった点/改善提案など
+
+  condition           RatingLevel? // 体調
+  motivation          RatingLevel? // モチベーション
+  workload            RatingLevel? // 業務量
+  difficulty          RatingLevel? // 業務難易度
+  teamConsultability  RatingLevel? // チーム内の相談しやすさ
+  growth              RatingLevel? // 成長実感
+
+  pdfBlobUrl String? // 生成済みPDFの保存先URL
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  techStackItems  TechStackItem[]
+  workAllocations WorkAllocation[]
+
+  @@unique([userId, targetYear, targetMonth])
+  @@index([userId, targetYear, targetMonth])
+}
+
+model TechStackItem {
+  id        String       @id @default(cuid())
+  reportId  String
+  report    Report       @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  category  TechCategory
+  name      String
+  sortOrder Int          @default(0)
+
+  @@index([reportId])
+}
+
+model WorkAllocation {
+  id         String @id @default(cuid())
+  reportId   String
+  report     Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  category   String
+  percentage Int
+  sortOrder  Int    @default(0)
+
+  @@index([reportId])
 }
