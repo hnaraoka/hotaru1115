@@ -372,6 +372,123 @@ select {
   font-size: 13px;
 }
 
+/* Tag input */
+.tag-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+}
+
+.tag-input input {
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+.tag-input input:focus {
+  outline: none;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  padding: 4px 8px 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tag-chip button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px;
+}
+
+/* Dev process checkboxes */
+.dev-process-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.dev-process-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dev-process-item input {
+  width: auto;
+}
+
+/* Work allocation */
+.work-allocation {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.work-allocation-row {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.work-allocation-percentage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.work-allocation-percentage input {
+  width: 100%;
+}
+
+.work-allocation-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.work-allocation-total {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.work-allocation-total.ok {
+  color: #16a34a;
+}
+
+.work-allocation-total.warn {
+  color: var(--danger);
+}
+
 /* Detail page */
 .detail-header {
   display: flex;
