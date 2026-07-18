@@ -28,10 +28,25 @@ export const reportInputSchema = z
     clientCompany: z.string().trim().min(1, "参画先企業は必須です").max(200, "参画先企業は200文字以内で入力してください"),
     workLocation: z.string().trim().min(1, "作業場所は必須です").max(200, "作業場所は200文字以内で入力してください"),
 
-    workDays: z.number().int().min(0).max(31).optional().nullable(),
-    workHours: z.number().min(0).max(500).optional().nullable(),
-    teleworkDays: z.number().int().min(0).max(31).optional().nullable(),
-    onsiteDays: z.number().int().min(0).max(31).optional().nullable(),
+    workDays: z
+      .number({ message: "月間実労働日数は必須です" })
+      .int()
+      .min(0)
+      .max(31),
+    workHours: z
+      .number({ message: "月間実労働時間は必須です" })
+      .min(0)
+      .max(500),
+    teleworkDays: z
+      .number({ message: "テレワーク日数は必須です" })
+      .int()
+      .min(0)
+      .max(31),
+    onsiteDays: z
+      .number({ message: "現場日数は必須です" })
+      .int()
+      .min(0)
+      .max(31),
 
     projectName: z.string().trim().min(1, "プロジェクト名は必須です").max(200, "プロジェクト名は200文字以内で入力してください"),
     projectPeriodStartYear: z.number().int().min(2000).max(2100).optional().nullable(),
@@ -79,6 +94,14 @@ export const reportInputSchema = z
         code: "custom",
         path: ["workAllocations"],
         message: `作業配分の合計は100%にしてください（現在: ${total}%）`,
+      });
+    }
+
+    if (data.workDays !== data.teleworkDays + data.onsiteDays) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["workDays"],
+        message: `月間実労働日数はテレワーク日数と現場日数の合計と一致させてください（現在: 実労働${data.workDays}日 / テレワーク${data.teleworkDays}日 + 現場${data.onsiteDays}日 = ${data.teleworkDays + data.onsiteDays}日）`,
       });
     }
 

@@ -326,6 +326,17 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       projectPeriodOngoing: latestReport.projectPeriodOngoing,
       devProcesses: latestReport.devProcesses,
       techStack,
+      workContent: latestReport.workContent,
+      condition: latestReport.condition ?? prev.condition,
+      motivation: latestReport.motivation ?? prev.motivation,
+      workload: latestReport.workload ?? prev.workload,
+      difficulty: latestReport.difficulty ?? prev.difficulty,
+      teamConsultability: latestReport.teamConsultability ?? prev.teamConsultability,
+      growth: latestReport.growth ?? prev.growth,
+      workAllocations: latestReport.workAllocations
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((w) => ({ category: w.category, percentage: w.percentage })),
     }));
     setDirty(true);
     setCarriedOver(true);
@@ -620,43 +631,47 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
 
       <div className="form-row">
         <div className={fieldClass("workDays")}>
-          <label htmlFor="workDays">月間実労働日数</label>
+          <label htmlFor="workDays">月間実労働日数 *</label>
           <input
             id="workDays"
             type="number"
             value={state.workDays}
             onChange={(e) => update("workDays", e.target.value)}
+            required
           />
           <FieldErrorText messages={errorsFor("workDays")} />
         </div>
         <div className={fieldClass("workHours")}>
-          <label htmlFor="workHours">月間実労働時間</label>
+          <label htmlFor="workHours">月間実労働時間 *</label>
           <input
             id="workHours"
             type="number"
             step="0.5"
             value={state.workHours}
             onChange={(e) => update("workHours", e.target.value)}
+            required
           />
           <FieldErrorText messages={errorsFor("workHours")} />
         </div>
         <div className={fieldClass("teleworkDays")}>
-          <label htmlFor="teleworkDays">テレワーク日数</label>
+          <label htmlFor="teleworkDays">テレワーク日数 *</label>
           <input
             id="teleworkDays"
             type="number"
             value={state.teleworkDays}
             onChange={(e) => update("teleworkDays", e.target.value)}
+            required
           />
           <FieldErrorText messages={errorsFor("teleworkDays")} />
         </div>
         <div className={fieldClass("onsiteDays")}>
-          <label htmlFor="onsiteDays">現場日数</label>
+          <label htmlFor="onsiteDays">現場日数 *</label>
           <input
             id="onsiteDays"
             type="number"
             value={state.onsiteDays}
             onChange={(e) => update("onsiteDays", e.target.value)}
+            required
           />
           <FieldErrorText messages={errorsFor("onsiteDays")} />
         </div>

@@ -9,7 +9,7 @@ export async function GET() {
   const report = await prisma.report.findFirst({
     where: { userId: session.user.id },
     orderBy: [{ targetYear: "desc" }, { targetMonth: "desc" }, { createdAt: "desc" }],
-    include: { techStackItems: true },
+    include: { techStackItems: true, workAllocations: true },
   });
 
   return NextResponse.json(report);
