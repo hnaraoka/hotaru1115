@@ -508,6 +508,28 @@ select {
   width: 100%;
 }
 
+@media (max-width: 640px) {
+  .work-allocation-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "category category"
+      "percentage delete";
+  }
+
+  .work-allocation-row > input {
+    grid-area: category;
+  }
+
+  .work-allocation-percentage {
+    grid-area: percentage;
+    min-width: 0;
+  }
+
+  .work-allocation-row > button {
+    grid-area: delete;
+  }
+}
+
 .work-allocation-footer {
   display: flex;
   justify-content: space-between;

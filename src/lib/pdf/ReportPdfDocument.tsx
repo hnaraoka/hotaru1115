@@ -18,14 +18,24 @@ Font.register({
 // transitions — it has no general "wrap anywhere" behavior for CJK. A long
 // paragraph that happens to stay within one script (common for hiragana-only
 // stretches) would otherwise never wrap and silently overflow the page.
-// Force per-character break opportunities for any non-ASCII "word" so
-// Japanese free text (作業内容/成果物/所感 etc.) always wraps; leave ASCII
-// words (tech stack tag names, etc.) untouched to avoid ugly English
-// dictionary hyphenation mid-word. This still allows a "-" glyph to appear
-// at a forced wrap point, same as elsewhere in the document.
+// react-pdf's line-breaker also unconditionally draws a "-" glyph at any
+// break that comes from word-hyphenation (a "penalty" break), which is wrong
+// for Japanese — real breaks between Japanese characters never show a
+// hyphen. So instead of splitting into hyphenation syllables, interleave
+// U+FEFF (zero-width no-break space) between characters of any non-ASCII
+// "word": it satisfies the line-breaker's whitespace check (so the break
+// becomes a hyphen-free "glue" break, like a real space) while rendering
+// with no visible glyph or gap. ASCII words (tech stack tag names, etc.)
+// are left untouched to avoid English dictionary hyphenation mid-word.
 Font.registerHyphenationCallback((word) => {
   if (/^[\x00-\x7F]*$/.test(word)) return [word];
-  return Array.from(word);
+  const chars = Array.from(word);
+  const result: string[] = [];
+  chars.forEach((ch, i) => {
+    result.push(ch);
+    if (i < chars.length - 1) result.push("﻿");
+  });
+  return result;
 });
 
 const BORDER = "0.75pt solid #555555";

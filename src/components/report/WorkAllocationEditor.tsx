@@ -37,8 +37,16 @@ export function WorkAllocationEditor({
               type="number"
               min={0}
               max={100}
-              value={row.percentage}
-              onChange={(e) => updateRow(i, { percentage: Number(e.target.value) })}
+              value={Number.isNaN(row.percentage) ? "" : row.percentage}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === "") {
+                  updateRow(i, { percentage: NaN });
+                  return;
+                }
+                const n = Number(raw);
+                if (!Number.isNaN(n)) updateRow(i, { percentage: n });
+              }}
             />
             <span>%</span>
           </div>
