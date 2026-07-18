@@ -1,10 +1,13 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { notifyFailedLogin } from "@/lib/notify";
+import { LOGIN_LOCKOUT_MINUTES, MAX_FAILED_LOGIN_ATTEMPTS } from "@/lib/authConstants";
 
-const MAX_FAILED_ATTEMPTS = 3;
+class AccountLockedError extends CredentialsSignin {
+  code = "account-locked";
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -25,6 +28,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({ where: { loginId } });
         if (!user || !user.isActive) return null;
 
+        if (user.failedLoginCount >= MAX_FAILED_LOGIN_ATTEMPTS && user.lastFailedAt) {
+          const unlockAt = new Date(user.lastFailedAt.getTime() + LOGIN_LOCKOUT_MINUTES * 60 * 1000);
+          if (unlockAt > new Date()) {
+            throw new AccountLockedError();
+          }
+        }
+
         const valid = await bcrypt.compare(password, user.passwordHash);
 
         if (!valid) {
@@ -33,9 +43,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: { id: user.id },
             data: { failedLoginCount, lastFailedAt: new Date() },
           });
-          if (failedLoginCount >= MAX_FAILED_ATTEMPTS) {
+          if (failedLoginCount === MAX_FAILED_LOGIN_ATTEMPTS) {
             await notifyFailedLogin(user);
-            await prisma.user.update({ where: { id: user.id }, data: { failedLoginCount: 0 } });
           }
           return null;
         }

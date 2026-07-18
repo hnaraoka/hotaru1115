@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import { LOGIN_LOCKOUT_MINUTES } from "@/lib/authConstants";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -25,7 +26,13 @@ export function LoginForm() {
     });
 
     if (result?.error) {
-      setError("ログインIDまたはパスワードが正しくありません。");
+      if (result.code === "account-locked") {
+        setError(
+          `ログイン試行回数が上限に達したため、アカウントを一時的にロックしています。${LOGIN_LOCKOUT_MINUTES}分ほど時間をおいてから再度お試しください。お急ぎの場合は管理者にパスワードの再発行を依頼してください。`,
+        );
+      } else {
+        setError("ログインIDまたはパスワードが正しくありません。");
+      }
       setSubmitting(false);
       return;
     }
