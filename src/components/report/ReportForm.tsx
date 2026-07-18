@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Report, TechStackItem, WorkAllocation } from "@prisma/client";
 import { reportInputSchema, type ReportInput } from "@/lib/reportSchema";
@@ -143,6 +143,10 @@ function buildInitialState(report?: ReportWithRelations): FormState {
   };
 }
 
+function nextMonthAfter(year: number, month: number): { year: number; month: number } {
+  return month >= 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
+}
+
 function toNullableInt(value: string): number | null {
   if (value.trim() === "") return null;
   const n = Number(value);
@@ -205,9 +209,60 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
   const [errors, setErrors] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [latestReport, setLatestReport] = useState<ReportWithRelations | null>(null);
+  const [latestChecked, setLatestChecked] = useState(false);
+  const [carriedOver, setCarriedOver] = useState(false);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setState((prev) => ({ ...prev, [key]: value }));
+  }
+
+  // Load the user's most recent report to (a) suggest the next target month
+  // and (b) offer a one-click carry-forward of the stable fields (company,
+  // tech stack, project info) into this new report.
+  useEffect(() => {
+    if (isEdit) return;
+    let cancelled = false;
+
+    fetch("/api/reports/latest")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ReportWithRelations | null) => {
+        if (cancelled || !data) return;
+        setLatestReport(data);
+        const next = nextMonthAfter(data.targetYear, data.targetMonth);
+        setState((prev) => ({ ...prev, targetYear: next.year, targetMonth: next.month }));
+      })
+      .finally(() => {
+        if (!cancelled) setLatestChecked(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit]);
+
+  function applyCarryOver() {
+    if (!latestReport) return;
+    const techStack = emptyTechStack();
+    for (const item of latestReport.techStackItems) {
+      techStack[item.category as TechCategoryValue]?.push(item.name);
+    }
+    setState((prev) => ({
+      ...prev,
+      gender: latestReport.gender ?? prev.gender,
+      age: latestReport.age !== null ? String(latestReport.age) : prev.age,
+      experienceYears:
+        latestReport.experienceYears !== null ? String(latestReport.experienceYears) : prev.experienceYears,
+      clientCompany: latestReport.clientCompany,
+      workLocation: latestReport.workLocation,
+      projectName: latestReport.projectName,
+      projectPeriodStartYear: latestReport.projectPeriodStartYear?.toString() ?? "",
+      projectPeriodStartMonth: latestReport.projectPeriodStartMonth?.toString() ?? "",
+      projectPeriodOngoing: latestReport.projectPeriodOngoing,
+      devProcesses: latestReport.devProcesses,
+      techStack,
+    }));
+    setCarriedOver(true);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -258,6 +313,23 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {!isEdit && latestReport && (
+        <div className="carry-over-banner">
+          <span>
+            前回（{latestReport.targetYear}年{latestReport.targetMonth}月分）のデータがあります。
+          </span>
+          <button type="button" className="btn btn-secondary" onClick={applyCarryOver}>
+            前回のデータを引き継ぐ
+          </button>
+          {carriedOver && <span className="carry-over-done">引き継ぎました</span>}
+        </div>
+      )}
+      {!isEdit && latestChecked && !latestReport && (
+        <div className="carry-over-banner">
+          <span>引き継げる過去の報告書はありません（今回が初回作成です）。</span>
         </div>
       )}
 

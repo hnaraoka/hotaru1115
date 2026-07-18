@@ -363,6 +363,25 @@ select {
   color: #fff;
 }
 
+.carry-over-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  color: var(--foreground);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.carry-over-done {
+  color: #16a34a;
+  font-weight: 600;
+  font-size: 12px;
+}
+
 .error-banner {
   background: color-mix(in srgb, var(--danger) 12%, transparent);
   border: 1px solid var(--danger);
