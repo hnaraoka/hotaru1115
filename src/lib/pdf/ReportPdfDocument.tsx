@@ -20,14 +20,18 @@ Font.register({
 // (wide-enough columns / shortened labels) so no such wrap is ever needed.
 Font.registerHyphenationCallback((word) => [word]);
 
-const BORDER = "0.75pt solid #999999";
-const LABEL_BG = "#e3efe6";
+const BORDER = "0.75pt solid #555555";
+const LABEL_BG = "#dceadb";
+const DEV_COL_WIDTH = 26;
+const PERIOD_LABEL_WIDTH = 42;
+const PERIOD_VALUE_WIDTH = 78;
+const PROJECT_LABEL_WIDTH = 130;
 
 const styles = StyleSheet.create({
   page: {
     fontFamily: "NotoSansJP",
     fontSize: 8.5,
-    padding: 28,
+    padding: 24,
     color: "#1a1a1a",
   },
   titleRow: {
@@ -39,7 +43,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
   },
@@ -65,6 +69,7 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRight: BORDER,
     justifyContent: "center",
+    alignItems: "center",
   },
   valueCell: {
     padding: 4,
@@ -75,39 +80,24 @@ const styles = StyleSheet.create({
     padding: 4,
     justifyContent: "center",
   },
+  centerText: {
+    textAlign: "center",
+  },
   sectionHeading: {
     fontWeight: "bold",
     fontSize: 9,
+    textAlign: "center",
   },
   bodyText: {
     fontSize: 8.5,
     lineHeight: 1.5,
   },
-  techRow: {
-    flexDirection: "row",
-    borderBottom: BORDER,
-    minHeight: 16,
-  },
-  devProcessCell: {
-    flex: 1,
-    borderRight: BORDER,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 3,
-    gap: 2,
-  },
-  devProcessCellLast: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 3,
-    gap: 2,
-  },
 });
 
-// Shortened, kanji-only labels for the narrow dev-process cells. Avoids labels
-// like "単体テスト" that mix kanji and katakana — react-pdf's line-breaker
-// inserts a stray "-" whenever a wrap is forced exactly at that script boundary.
+// Shortened, kanji-only labels for the narrow dev-process columns. Avoids
+// labels like "単体テスト" that mix kanji and katakana — react-pdf's
+// line-breaker inserts a stray "-" whenever a wrap is forced exactly at that
+// script boundary.
 const DEV_PROCESS_PDF_LABELS: Record<string, string> = {
   顧客折衝: "顧客折衝",
   要件定義: "要件定義",
@@ -138,8 +128,16 @@ function Row({ children, style }: { children: React.ReactNode; style?: object })
   return <View style={{ ...styles.row, ...style }}>{children}</View>;
 }
 
-function LabelCell({ children, width }: { children: React.ReactNode; width?: number }) {
-  return <View style={{ ...styles.labelCell, width }}>{renderCellContent(children)}</View>;
+function LabelCell({
+  children,
+  width,
+  flex,
+}: {
+  children: React.ReactNode;
+  width?: number;
+  flex?: number;
+}) {
+  return <View style={{ ...styles.labelCell, width, flex }}>{renderCellContent(children)}</View>;
 }
 
 function ValueCell({
@@ -147,14 +145,29 @@ function ValueCell({
   width,
   flex,
   last,
+  center,
 }: {
   children: React.ReactNode;
   width?: number;
   flex?: number;
   last?: boolean;
+  center?: boolean;
 }) {
   const base = last ? styles.valueCellLast : styles.valueCell;
-  return <View style={{ ...base, width, flex }}>{renderCellContent(children)}</View>;
+  const content = renderCellContent(children);
+  return (
+    <View style={{ ...base, width, flex }}>
+      {center ? <View style={{ alignItems: "center" }}>{content}</View> : content}
+    </View>
+  );
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    result.push(items.slice(i, i + size));
+  }
+  return result;
 }
 
 type ReportWithRelations = Report & {
@@ -183,36 +196,42 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
   );
   const pieSlices = buildPieSlices(allocationItems, CATEGORICAL_PALETTE, 45, 45, 40);
 
+  const devColTotalWidth = DEV_COL_WIDTH * DEV_PROCESS_OPTIONS.length;
+
   return (
     <Document title={`月次報告書_${report.targetYear}${String(report.targetMonth).padStart(2, "0")}`}>
       <Page size="A4" style={styles.page}>
         <View style={styles.titleRow}>
           <View style={styles.titleSpacer} />
           <Text style={styles.title}>月次報告書</Text>
-          <Text style={styles.submittedAt}>提出日: {submittedAt}</Text>
+          <Text style={styles.submittedAt}>提出日：　{submittedAt}</Text>
         </View>
 
         {/* 提出者情報 */}
         <View style={styles.table}>
           <Row>
-            <LabelCell width={60}>提出者</LabelCell>
-            <ValueCell width={140}>{report.user.name}</ValueCell>
+            <LabelCell width={55}>提出者</LabelCell>
+            <ValueCell width={135} center>
+              {report.user.name}
+            </ValueCell>
             <LabelCell width={45}>性別</LabelCell>
-            <ValueCell width={70}>{report.gender ?? "-"}</ValueCell>
+            <ValueCell width={70} center>
+              {report.gender ?? "-"}
+            </ValueCell>
             <LabelCell width={45}>年齢</LabelCell>
-            <ValueCell flex={1} last>
+            <ValueCell flex={1} last center>
               {report.age !== null ? String(report.age) : "-"}
             </ValueCell>
           </Row>
           <Row style={{ borderBottom: "none" }}>
-            <LabelCell width={60}> </LabelCell>
-            <ValueCell width={140}> </ValueCell>
+            <LabelCell width={55}> </LabelCell>
+            <ValueCell width={135}> </ValueCell>
             <LabelCell width={45}>対象月</LabelCell>
-            <ValueCell width={70}>
+            <ValueCell width={70} center>
               {report.targetYear}年{report.targetMonth}月
             </ValueCell>
             <LabelCell width={45}>経験年数</LabelCell>
-            <ValueCell flex={1} last>
+            <ValueCell flex={1} last center>
               {report.experienceYears !== null ? `${report.experienceYears}年` : "-"}
             </ValueCell>
           </Row>
@@ -221,24 +240,28 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
         {/* 参画先・勤務 */}
         <View style={styles.table}>
           <Row>
-            <LabelCell width={90}>参画先企業</LabelCell>
+            <LabelCell width={95}>参画先企業</LabelCell>
             <ValueCell flex={1} last>
               {report.clientCompany}
             </ValueCell>
           </Row>
           <Row>
-            <LabelCell width={90}>作業場所</LabelCell>
+            <LabelCell width={95}>作業場所</LabelCell>
             <ValueCell flex={1} last>
               {report.workLocation}
             </ValueCell>
           </Row>
           <Row style={{ borderBottom: "none" }}>
-            <LabelCell width={90}>月間実労働</LabelCell>
-            <ValueCell width={110}>日数 {report.workDays ?? "-"}日</ValueCell>
-            <ValueCell width={110}>時間 {report.workHours ?? "-"}時間</ValueCell>
-            <ValueCell width={110}>テレワーク {report.teleworkDays ?? "-"}日</ValueCell>
+            <LabelCell width={95}>月間実労働</LabelCell>
+            <LabelCell width={42}>日数</LabelCell>
+            <ValueCell width={55}>{report.workDays ?? "-"}日</ValueCell>
+            <LabelCell width={42}>時間</LabelCell>
+            <ValueCell width={65}>{report.workHours ?? "-"}時間</ValueCell>
+            <LabelCell width={55}>テレワーク</LabelCell>
+            <ValueCell width={45}>{report.teleworkDays ?? "-"}日</ValueCell>
+            <LabelCell width={40}>現場</LabelCell>
             <ValueCell flex={1} last>
-              現場 {report.onsiteDays ?? "-"}日
+              {report.onsiteDays ?? "-"}日
             </ValueCell>
           </Row>
         </View>
@@ -247,72 +270,119 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
         <View style={styles.table}>
           <Row>
             <ValueCell flex={1} last>
-              <Text style={styles.sectionHeading}>名称</Text>
+              <Text style={{ ...styles.sectionHeading, backgroundColor: LABEL_BG, padding: 2 }}>名称</Text>
             </ValueCell>
           </Row>
-          {TECH_CATEGORY_OPTIONS.map(({ value, label }, i, arr) => {
-            const names = report.techStackItems
+          {TECH_CATEGORY_OPTIONS.map(({ value, label }, categoryIndex, categories) => {
+            const items = report.techStackItems
               .filter((t) => t.category === value)
-              .map((t) => t.name)
-              .join(" / ");
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((t) => t.name);
+            const rows = chunk(items.length > 0 ? items : ["-"], 4);
+            const isLastCategory = categoryIndex === categories.length - 1;
+
             return (
-              <Row key={value} style={i === arr.length - 1 ? { borderBottom: "none" } : undefined}>
-                <LabelCell width={108}>{label}</LabelCell>
-                <ValueCell flex={1} last>
-                  {names || "-"}
-                </ValueCell>
-              </Row>
+              <View
+                key={value}
+                style={{
+                  flexDirection: "row",
+                  borderBottom: isLastCategory ? "none" : BORDER,
+                }}
+              >
+                <View style={{ ...styles.labelCell, width: 100 }}>
+                  <Text>{label}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  {rows.map((rowItems, rowIndex) => (
+                    <View
+                      key={rowIndex}
+                      style={{
+                        flexDirection: "row",
+                        borderBottom: rowIndex === rows.length - 1 ? "none" : BORDER,
+                        minHeight: 16,
+                      }}
+                    >
+                      {Array.from({ length: 4 }, (_, i) => rowItems[i] ?? "").map((name, i) => (
+                        <View
+                          key={i}
+                          style={{
+                            flex: 1,
+                            borderRight: i === 3 ? "none" : BORDER,
+                            padding: 3,
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          {name && <Text style={{ textAlign: "center" }}>{name}</Text>}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              </View>
             );
           })}
         </View>
 
         {/* プロジェクト */}
         <View style={styles.table}>
+          <Row>
+            <LabelCell width={PERIOD_LABEL_WIDTH + PERIOD_VALUE_WIDTH}>期間</LabelCell>
+            <LabelCell flex={1}>プロジェクト名／作業内容</LabelCell>
+            <LabelCell width={devColTotalWidth}>開発工程</LabelCell>
+          </Row>
           <Row style={{ borderBottom: "none" }}>
-            <LabelCell width={70}>期間</LabelCell>
-            <ValueCell width={150}>
-              <Text>
-                {periodStart} 〜 {periodEnd}
-              </Text>
+            <View
+              style={{
+                width: PERIOD_LABEL_WIDTH + PERIOD_VALUE_WIDTH,
+                borderRight: BORDER,
+                paddingVertical: 8,
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Text style={styles.centerText}>{periodStart}</Text>
+              <Text style={styles.centerText}>〜</Text>
+              <Text style={styles.centerText}>{periodEnd}</Text>
               {report.projectPeriodMonths !== null && (
-                <Text style={{ fontSize: 7.5, color: "#555" }}>{report.projectPeriodMonths}ヶ月</Text>
+                <Text style={{ ...styles.centerText, fontSize: 7.5, color: "#555" }}>
+                  {report.projectPeriodMonths}ヶ月
+                </Text>
               )}
-            </ValueCell>
-            <View style={{ flex: 1, borderRight: BORDER }}>
-              <View style={{ padding: 4, borderBottom: BORDER }}>
-                <Text style={{ fontWeight: "bold", fontSize: 8.5, marginBottom: 2 }}>{report.projectName}</Text>
-                <Text style={styles.bodyText}>{report.workContent}</Text>
-              </View>
-              <View style={{ padding: 4 }}>
-                <Text style={{ fontSize: 7.5, fontWeight: "bold", marginBottom: 3 }}>開発工程</Text>
-                <View style={{ flexDirection: "row" }}>
-                  {DEV_PROCESS_OPTIONS.map((option, i, arr) => {
-                    const active = report.devProcesses.includes(option);
-                    return (
-                      <View
-                        key={option}
-                        style={
-                          i === arr.length - 1
-                            ? styles.devProcessCellLast
-                            : styles.devProcessCell
-                        }
-                      >
-                        <Text
-                          style={{
-                            fontSize: 6.5,
-                            textAlign: "center",
-                            fontWeight: active ? "bold" : "normal",
-                            color: active ? "#0b5c1f" : "#999999",
-                          }}
-                        >
-                          {DEV_PROCESS_PDF_LABELS[option]}
+            </View>
+
+            <View style={{ flex: 1, borderRight: BORDER, padding: 5 }}>
+              <Text style={{ fontWeight: "bold", fontSize: 8.5, marginBottom: 4, textAlign: "center" }}>
+                {report.projectName}
+              </Text>
+              <Text style={styles.bodyText}>{report.workContent}</Text>
+            </View>
+
+            <View style={{ width: devColTotalWidth, flexDirection: "row" }}>
+              {DEV_PROCESS_OPTIONS.map((option, i, arr) => {
+                const active = report.devProcesses.includes(option);
+                const chars = DEV_PROCESS_PDF_LABELS[option].split("");
+                return (
+                  <View
+                    key={option}
+                    style={{
+                      width: DEV_COL_WIDTH,
+                      borderRight: i === arr.length - 1 ? "none" : BORDER,
+                    }}
+                  >
+                    <View style={{ alignItems: "center", paddingTop: 3 }}>
+                      {chars.map((ch, ci) => (
+                        <Text key={ci} style={{ fontSize: 6.5, fontWeight: "bold", lineHeight: 1.3 }}>
+                          {ch}
                         </Text>
-                        <Text style={{ fontSize: 8, color: active ? "#0b5c1f" : "transparent" }}>○</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
+                      ))}
+                    </View>
+                    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                      <Text style={{ fontSize: 9, color: active ? "#0b5c1f" : "transparent" }}>○</Text>
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           </Row>
         </View>
@@ -321,9 +391,14 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
         {report.deliverables && (
           <View style={styles.table}>
             <Row style={{ borderBottom: "none" }}>
-              <LabelCell width={80}>成果物</LabelCell>
+              <LabelCell width={90}>成果物</LabelCell>
               <ValueCell flex={1} last>
-                <Text style={styles.bodyText}>{report.deliverables}</Text>
+                <Text style={styles.bodyText}>
+                  {report.deliverables
+                    .split("\n")
+                    .map((line) => (line.trim() ? `・${line.trim()}` : line))
+                    .join("\n")}
+                </Text>
               </ValueCell>
             </Row>
           </View>
@@ -357,7 +432,7 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
 
         {/* 自己評価 + 作業配分 */}
         <View style={{ ...styles.table, flexDirection: "row" }}>
-          <View style={{ width: 260, borderRight: BORDER }}>
+          <View style={{ width: PROJECT_LABEL_WIDTH + 130, borderRight: BORDER }}>
             {RATING_FIELDS.map(({ key, label }, i, arr) => (
               <View
                 key={key}
@@ -366,29 +441,32 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
                   borderBottom: i === arr.length - 1 ? "none" : BORDER,
                 }}
               >
-                <View style={{ ...styles.labelCell, width: 150, borderRight: BORDER }}>
+                <View style={{ ...styles.labelCell, width: PROJECT_LABEL_WIDTH, borderRight: BORDER }}>
                   <Text>{label}</Text>
                 </View>
-                <View style={{ padding: 4, flex: 1, justifyContent: "center" }}>
+                <View style={{ padding: 4, flex: 1, alignItems: "center", justifyContent: "center" }}>
                   <Text>{ratingLabel(report[key])}</Text>
                 </View>
               </View>
             ))}
           </View>
 
-          <View style={{ flex: 1, padding: 8, alignItems: "center" }}>
-            <Text style={{ fontSize: 8, fontWeight: "bold", marginBottom: 4 }}>作業配分</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <Svg width={90} height={90} viewBox="0 0 90 90">
+          <View style={{ ...styles.labelCell, width: 44, borderRight: BORDER }}>
+            <Text style={{ textAlign: "center" }}>作業配分</Text>
+          </View>
+
+          <View style={{ flex: 1, padding: 10, alignItems: "center", justifyContent: "center" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <Svg width={95} height={95} viewBox="0 0 90 90">
                 {pieSlices.map((slice) => (
                   <SvgPath key={slice.category} d={slice.path} fill={slice.color} />
                 ))}
               </Svg>
-              <View style={{ gap: 3 }}>
+              <View style={{ gap: 4 }}>
                 {pieSlices.map((slice) => (
                   <View key={slice.category} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                    <View style={{ width: 6, height: 6, backgroundColor: slice.color }} />
-                    <Text style={{ fontSize: 7 }}>
+                    <View style={{ width: 7, height: 7, backgroundColor: slice.color }} />
+                    <Text style={{ fontSize: 7.5 }}>
                       {slice.category} {slice.percentage}%
                     </Text>
                   </View>
@@ -398,7 +476,7 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
           </View>
         </View>
 
-        <Text style={{ position: "absolute", bottom: 16, left: 28, fontSize: 7, color: "#999999" }}>
+        <Text style={{ position: "absolute", bottom: 14, left: 24, fontSize: 7, color: "#999999" }}>
           作成日時: {new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}
         </Text>
       </Page>
