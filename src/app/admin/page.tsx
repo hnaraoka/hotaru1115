@@ -18,9 +18,14 @@ export default async function AdminDashboardPage() {
           <h1>管理者ダッシュボード</h1>
           <p>ユーザー管理や通知を確認できます。</p>
         </div>
-        <Link href="/admin/users" className="btn btn-primary">
-          ユーザー管理へ
-        </Link>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link href="/admin/status" className="btn btn-secondary">
+            提出状況を見る
+          </Link>
+          <Link href="/admin/users" className="btn btn-primary">
+            ユーザー管理へ
+          </Link>
+        </div>
       </div>
 
       <div className="section-title" style={{ borderTop: "none", paddingTop: 0 }}>
