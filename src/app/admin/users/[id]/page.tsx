@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { EditUserForm } from "@/components/admin/EditUserForm";
+import { DeleteUserButton } from "@/components/admin/DeleteUserButton";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,18 @@ export default async function EditUserPage({ params }: Props) {
           isActive: user.isActive,
         }}
       />
+
+      {user.role === "USER" && (
+        <div className="card" style={{ padding: 20, marginTop: 14 }}>
+          <div className="section-title" style={{ marginTop: 0, border: "none", padding: 0 }}>
+            危険な操作
+          </div>
+          <p className="hint" style={{ margin: "6px 0 12px" }}>
+            このユーザーのアカウントと、作成済みの月次報告書をすべて削除します。元に戻せません。
+          </p>
+          <DeleteUserButton id={user.id} name={user.name} />
+        </div>
+      )}
     </>
   );
 }

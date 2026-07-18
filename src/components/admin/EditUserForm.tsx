@@ -17,19 +17,38 @@ export function EditUserForm({ user }: { user: UserData }) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [resetPasswordResult, setResetPasswordResult] = useState<string | null>(null);
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setError(null);
+    setPasswordChanged(false);
+
+    const formData = new FormData(form);
+    const password = String(formData.get("password") ?? "");
+    const passwordConfirm = String(formData.get("passwordConfirm") ?? "");
+
+    if (password !== "") {
+      if (password.length < 8) {
+        setError("パスワードは8文字以上で入力してください");
+        return;
+      }
+      if (password !== passwordConfirm) {
+        setError("パスワードと確認用パスワードが一致しません");
+        return;
+      }
+    }
+
     setSubmitting(true);
 
-    const formData = new FormData(event.currentTarget);
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: formData.get("name"),
       role: formData.get("role"),
       email: formData.get("email"),
       isActive: formData.get("isActive") === "on",
     };
+    if (password !== "") payload.password = password;
 
     const res = await fetch(`/api/admin/users/${user.id}`, {
       method: "PATCH",
@@ -41,6 +60,14 @@ export function EditUserForm({ user }: { user: UserData }) {
     if (!res.ok) {
       setError(data.error ?? "更新に失敗しました");
       setSubmitting(false);
+      return;
+    }
+
+    if (password !== "") {
+      setSubmitting(false);
+      setPasswordChanged(true);
+      form.reset();
+      router.refresh();
       return;
     }
 
@@ -78,6 +105,10 @@ export function EditUserForm({ user }: { user: UserData }) {
         </div>
       )}
 
+      {passwordChanged && (
+        <div className="carry-over-done">パスワードを変更しました。</div>
+      )}
+
       <form className="form" onSubmit={handleSubmit}>
         {error && <div className="error-banner">{error}</div>}
 
@@ -112,6 +143,28 @@ export function EditUserForm({ user }: { user: UserData }) {
           </label>
         </div>
 
+        <div className="section-title">パスワードを変更する</div>
+        <p className="hint" style={{ margin: 0 }}>
+          自分でパスワードを指定したい場合は入力してください。空欄のままなら変更されません。
+        </p>
+        <div className="form-row">
+          <div className="field">
+            <label htmlFor="password">新しいパスワード</label>
+            <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} />
+            <span className="hint">8文字以上</span>
+          </div>
+          <div className="field">
+            <label htmlFor="passwordConfirm">新しいパスワード（確認用）</label>
+            <input
+              id="passwordConfirm"
+              name="passwordConfirm"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+            />
+          </div>
+        </div>
+
         <div className="form-actions">
           <button
             type="button"
@@ -119,7 +172,7 @@ export function EditUserForm({ user }: { user: UserData }) {
             onClick={handleResetPassword}
             disabled={submitting}
           >
-            パスワードを再発行
+            ランダムなパスワードを再発行
           </button>
           <button type="submit" className="btn btn-primary" disabled={submitting}>
             {submitting ? "保存中..." : "保存する"}
