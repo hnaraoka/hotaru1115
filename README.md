@@ -4,11 +4,11 @@ Next.js (Node.js) + Prisma + PostgreSQL で構築した、SES常駐エンジニ�
 
 ## 開発状況
 
-現在 **Phase 2（月次報告書フォーム）** まで実装済みです。
+現在 **Phase 3（PDF出力）** まで実装済みです。
 
 - [x] Phase 1: データモデル刷新＋認証基盤（NextAuth・ユーザー管理画面・ログイン画面・失敗回数通知）
 - [x] Phase 2: 月次報告書フォーム＋バリデーション＋保存
-- [ ] Phase 3: PDF出力（レイアウト再現・円グラフ含む）
+- [x] Phase 3: PDF出力（レイアウト再現・円グラフ含む）
 - [ ] Phase 4: 前月データ引き継ぎ
 - [ ] Phase 5: Resendメール通知＋画面内通知の仕上げ
 - [ ] Phase 6: 過去PDF読み込み（固定テンプレート解析）
@@ -26,13 +26,19 @@ Next.js (Node.js) + Prisma + PostgreSQL で構築した、SES常駐エンジニ�
 - **バリデーション**: 必須項目・開発工程1つ以上選択・作業配分の合計100%チェックをクライアント側（Zod）とサーバー側APIの両方で実施します。同一ユーザー・同一対象月の重複作成はサーバー側で防止されます。
 - **一覧・詳細・編集・削除**: ログインユーザー本人の報告書のみ閲覧・編集・削除できます（管理者は全件アクセス可）。
 
+## Phase 3 で実装した機能
+
+- **PDF出力**: 詳細画面の「PDFを開く」「PDFをダウンロード」から、元のExcel帳票に近いレイアウトのPDFを生成します（提出者情報・参画先・技術スタック・開発工程チェック・自己評価・作業配分の円グラフなど）。
+- **日本語フォント対応**: 常用漢字サブセットのNoto Sans JPを同梱し、○記号などの記号類も含めて文字化けなく描画します。
+- **作業配分の円グラフ**: ユーザーが自由に追加した項目を、検証済みの識別性カラーパレット（8色固定順）で描画します。9項目を超える場合は上位7項目＋「その他」に集約されます。
+
 ## 技術構成
 
 - [Next.js](https://nextjs.org)（App Router / TypeScript）
 - [Prisma](https://www.prisma.io) + PostgreSQL（データの保存）
 - [NextAuth (Auth.js) v5](https://authjs.dev) + bcryptjs（ID/パスワード認証）
 - [Resend](https://resend.com)（ログイン失敗の管理者宛メール通知。未設定時は画面内通知のみ動作）
-- [@react-pdf/renderer](https://react-pdf.org)（Phase 3で使用予定。Noto Sans JP の常用漢字サブセットフォントを同梱）
+- [@react-pdf/renderer](https://react-pdf.org)（サーバーサイドPDF生成。Noto Sans JP の常用漢字サブセットフォントを同梱）
 
 ## セットアップ（ローカル開発）
 
@@ -90,9 +96,9 @@ npm run dev
 
 6. デプロイを実行します。`npm run build` は自動的に `prisma generate` を実行してから `next build` を行います（`postinstall` でも `prisma generate` を実行するため、Vercel のキャッシュ環境でも Prisma Client が生成されます）。
 
-## PDFの日本語フォントについて（Phase 3で使用予定）
+## PDFの日本語フォントについて
 
-`src/fonts/` に Noto Sans JP（OFL ライセンス）を常用漢字・ひらがな・カタカナ・記号に絞ってサブセット化したフォントを同梱しています。より広い文字をカバーしたい場合は `src/fonts/` のフォントをフルセットのものに差し替えてください（ファイルサイズが増加します）。
+`src/fonts/` に Noto Sans JP（OFL ライセンス）を常用漢字・ひらがな・カタカナ・記号（○●や矢印など）に絞ってサブセット化したフォントを同梱しています。常用漢字外の人名・固有名詞などが含まれる場合、PDF上でその文字だけ表示されない可能性があります。より広い文字をカバーしたい場合は `src/fonts/` のフォントをフルセットのものに差し替えてください（ファイルサイズが増加します）。
 
 ## ディレクトリ構成（抜粋）
 
@@ -104,17 +110,29 @@ src/
     api/auth/[...nextauth]/       NextAuth ハンドラー
     api/admin/users/              ユーザーCRUD API
     api/admin/notifications/      通知既読API
+    reports/new, [id], [id]/edit  報告書の新規作成・詳細・編集画面
+    api/reports/                  報告書CRUD API
+    api/reports/[id]/pdf/         PDF生成API
   components/
     admin/                        ユーザー管理・通知のUI部品
+    report/                       報告書フォーム・タグ入力・作業配分エディタ等
     LogoutButton.tsx
   lib/
     prisma.ts                     Prisma Client シングルトン
     auth.ts                       NextAuth設定（Credentials Provider）
     notify.ts                     ログイン失敗時の通知処理
     password.ts                   初期パスワード生成・ハッシュ化
-    requireAdmin.ts               管理者権限チェック
+    requireAdmin.ts / requireUser.ts  権限チェック
+    constants.ts                  開発工程・技術カテゴリ・評価段階の定義
+    reportSchema.ts                Zodバリデーションスキーマ（クライアント/サーバー共通）
+    reportData.ts                  Prisma書き込み用データ変換
+    format.ts                      表示用ラベル変換
+    pdf/
+      ReportPdfDocument.tsx        PDFレイアウト定義
+      pieChart.ts                  円グラフSVGパス生成
+      colors.ts                    検証済みカテゴリカルパレット
   proxy.ts                        ルート保護（旧middleware。Next.js 16でリネーム）
-  fonts/                          PDF用日本語フォント（Phase 3で使用）
+  fonts/                          PDF用日本語フォント
 prisma/
   schema.prisma                   データモデル定義
   seed.ts                         初期管理者アカウント作成スクリプト

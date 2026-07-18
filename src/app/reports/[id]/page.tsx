@@ -44,6 +44,17 @@ export default async function ReportDetailPage({ params }: Props) {
           </p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
+          <a
+            className="btn btn-secondary"
+            href={`/api/reports/${report.id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            PDFを開く
+          </a>
+          <a className="btn btn-primary" href={`/api/reports/${report.id}/pdf`} download>
+            PDFをダウンロード
+          </a>
           <Link href={`/reports/${report.id}/edit`} className="btn btn-secondary">
             編集
           </Link>
