@@ -21,5 +21,7 @@ declare module "next-auth/jwt" {
     id: string;
     loginId: string;
     role: "ADMIN" | "USER";
+    /** Epoch ms of the last time this token's account was confirmed active. */
+    activeCheckedAt: number;
   }
 }
