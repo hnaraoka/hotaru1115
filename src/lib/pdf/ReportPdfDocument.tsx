@@ -13,12 +13,20 @@ Font.register({
     { src: path.join(process.cwd(), "src/fonts/NotoSansJP-Bold.ttf"), fontWeight: "bold" },
   ],
 });
-// Disable English-style mid-word hyphenation for any Latin text in the document
-// (tech stack names, etc). Note this does NOT prevent react-pdf's line-breaker
-// from inserting a "-" when a line must wrap exactly at a kanji/katakana script
-// boundary — that's handled below by keeping short Japanese labels on one line
-// (wide-enough columns / shortened labels) so no such wrap is ever needed.
-Font.registerHyphenationCallback((word) => [word]);
+// react-pdf only finds line-break opportunities inside a run of same-script
+// text (e.g. an all-hiragana or all-kanji stretch) at Unicode *script*
+// transitions — it has no general "wrap anywhere" behavior for CJK. A long
+// paragraph that happens to stay within one script (common for hiragana-only
+// stretches) would otherwise never wrap and silently overflow the page.
+// Force per-character break opportunities for any non-ASCII "word" so
+// Japanese free text (作業内容/成果物/所感 etc.) always wraps; leave ASCII
+// words (tech stack tag names, etc.) untouched to avoid ugly English
+// dictionary hyphenation mid-word. This still allows a "-" glyph to appear
+// at a forced wrap point, same as elsewhere in the document.
+Font.registerHyphenationCallback((word) => {
+  if (/^[\x00-\x7F]*$/.test(word)) return [word];
+  return Array.from(word);
+});
 
 const BORDER = "0.75pt solid #555555";
 const LABEL_BG = "#dceadb";
@@ -215,20 +223,20 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
               {report.user.name}
             </ValueCell>
             <LabelCell width={45}>性別</LabelCell>
-            <ValueCell width={70} center>
-              {report.gender ?? "-"}
-            </ValueCell>
             <LabelCell width={45}>年齢</LabelCell>
+            <LabelCell width={45}>対象月</LabelCell>
             <ValueCell flex={1} last center>
-              {report.age !== null ? String(report.age) : "-"}
+              {report.targetYear}年{report.targetMonth}月
             </ValueCell>
           </Row>
           <Row style={{ borderBottom: "none" }}>
             <LabelCell width={55}> </LabelCell>
             <ValueCell width={135}> </ValueCell>
-            <LabelCell width={45}>対象月</LabelCell>
-            <ValueCell width={70} center>
-              {report.targetYear}年{report.targetMonth}月
+            <ValueCell width={45} center>
+              {report.gender ?? "-"}
+            </ValueCell>
+            <ValueCell width={45} center>
+              {report.age !== null ? String(report.age) : "-"}
             </ValueCell>
             <LabelCell width={45}>経験年数</LabelCell>
             <ValueCell flex={1} last center>
@@ -393,16 +401,7 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
             <Row style={{ borderBottom: "none" }}>
               <LabelCell width={90}>成果物</LabelCell>
               <ValueCell flex={1} last>
-                <Text style={styles.bodyText}>
-                  {report.deliverables
-                    .split("\n")
-                    .map((line) => {
-                      const trimmed = line.trim();
-                      if (!trimmed) return line;
-                      return `・${trimmed.replace(/^[・･]\s*/, "")}`;
-                    })
-                    .join("\n")}
-                </Text>
+                <Text style={styles.bodyText}>{report.deliverables}</Text>
               </ValueCell>
             </Row>
           </View>
