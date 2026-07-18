@@ -9,6 +9,7 @@ import type { TechCategoryValue } from "@/lib/constants";
 import { TagInput } from "@/components/report/TagInput";
 import { DevProcessCheckboxes } from "@/components/report/DevProcessCheckboxes";
 import { WorkAllocationEditor, type WorkAllocationRow } from "@/components/report/WorkAllocationEditor";
+import type { ParsedReportFields } from "@/lib/pdfImport/parseLegacyReport";
 
 type ReportWithRelations = Report & { techStackItems: TechStackItem[]; workAllocations: WorkAllocation[] };
 
@@ -212,6 +213,10 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
   const [latestReport, setLatestReport] = useState<ReportWithRelations | null>(null);
   const [latestChecked, setLatestChecked] = useState(false);
   const [carriedOver, setCarriedOver] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [imported, setImported] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setState((prev) => ({ ...prev, [key]: value }));
@@ -263,6 +268,65 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       techStack,
     }));
     setCarriedOver(true);
+  }
+
+  async function handleImportPdf(file: File) {
+    setImporting(true);
+    setImportError(null);
+    setImportWarnings([]);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/api/reports/import-pdf", { method: "POST", body: formData });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      setImportError(data.error ?? "PDFの読み込みに失敗しました");
+      setImporting(false);
+      return;
+    }
+
+    const parsed = data as ParsedReportFields;
+    setState((prev) => {
+      const next = { ...prev };
+      if (parsed.targetYear !== undefined) next.targetYear = parsed.targetYear;
+      if (parsed.targetMonth !== undefined) next.targetMonth = parsed.targetMonth;
+      if (parsed.gender !== undefined) next.gender = parsed.gender;
+      if (parsed.age !== undefined) next.age = parsed.age;
+      if (parsed.experienceYears !== undefined) next.experienceYears = parsed.experienceYears;
+      if (parsed.clientCompany !== undefined) next.clientCompany = parsed.clientCompany;
+      if (parsed.workLocation !== undefined) next.workLocation = parsed.workLocation;
+      if (parsed.workDays !== undefined) next.workDays = parsed.workDays;
+      if (parsed.workHours !== undefined) next.workHours = parsed.workHours;
+      if (parsed.teleworkDays !== undefined) next.teleworkDays = parsed.teleworkDays;
+      if (parsed.onsiteDays !== undefined) next.onsiteDays = parsed.onsiteDays;
+      if (parsed.projectName !== undefined) next.projectName = parsed.projectName;
+      if (parsed.projectPeriodStartYear !== undefined) next.projectPeriodStartYear = parsed.projectPeriodStartYear;
+      if (parsed.projectPeriodStartMonth !== undefined) next.projectPeriodStartMonth = parsed.projectPeriodStartMonth;
+      if (parsed.projectPeriodOngoing !== undefined) next.projectPeriodOngoing = parsed.projectPeriodOngoing;
+      if (parsed.projectPeriodEndYear !== undefined) next.projectPeriodEndYear = parsed.projectPeriodEndYear;
+      if (parsed.projectPeriodEndMonth !== undefined) next.projectPeriodEndMonth = parsed.projectPeriodEndMonth;
+      if (parsed.projectPeriodMonths !== undefined) next.projectPeriodMonths = parsed.projectPeriodMonths;
+      if (parsed.workContent !== undefined) next.workContent = parsed.workContent;
+      if (parsed.devProcesses !== undefined) next.devProcesses = parsed.devProcesses;
+      if (parsed.deliverables !== undefined) next.deliverables = parsed.deliverables;
+      if (parsed.troubles !== undefined) next.troubles = parsed.troubles;
+      if (parsed.goodPoints !== undefined) next.goodPoints = parsed.goodPoints;
+      if (parsed.condition !== undefined) next.condition = parsed.condition;
+      if (parsed.motivation !== undefined) next.motivation = parsed.motivation;
+      if (parsed.workload !== undefined) next.workload = parsed.workload;
+      if (parsed.difficulty !== undefined) next.difficulty = parsed.difficulty;
+      if (parsed.teamConsultability !== undefined) next.teamConsultability = parsed.teamConsultability;
+      if (parsed.growth !== undefined) next.growth = parsed.growth;
+      if (parsed.techStack !== undefined) next.techStack = parsed.techStack;
+      if (parsed.workAllocations !== undefined) next.workAllocations = parsed.workAllocations;
+      return next;
+    });
+
+    setImportWarnings(parsed.warnings ?? []);
+    setImported(true);
+    setImporting(false);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -330,6 +394,38 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       {!isEdit && latestChecked && !latestReport && (
         <div className="carry-over-banner">
           <span>引き継げる過去の報告書はありません（今回が初回作成です）。</span>
+        </div>
+      )}
+
+      {!isEdit && (
+        <div className="carry-over-banner">
+          <span>過去に作成したExcel由来のPDF帳票があれば、読み込んでフォームに自動入力できます。</span>
+          <label className="btn btn-secondary" style={{ cursor: "pointer" }}>
+            {importing ? "読み込み中..." : "PDFから読み込む"}
+            <input
+              type="file"
+              accept="application/pdf"
+              style={{ display: "none" }}
+              disabled={importing}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) handleImportPdf(file);
+              }}
+            />
+          </label>
+          {imported && !importError && <span className="carry-over-done">読み込みました</span>}
+        </div>
+      )}
+      {importError && <div className="error-banner">{importError}</div>}
+      {importWarnings.length > 0 && (
+        <div className="error-banner" style={{ color: "#92400e", background: "#fef3c7", borderColor: "#fbbf24" }}>
+          <ul style={{ paddingLeft: 18 }}>
+            {importWarnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+          <div>読み込んだ内容は必ずご確認・修正のうえ保存してください。</div>
         </div>
       )}
 
