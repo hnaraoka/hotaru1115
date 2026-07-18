@@ -160,6 +160,21 @@ function toNullableFloat(value: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Months elapsed from the project join date (プロジェクト参画年月) through
+// this report's target month, inclusive: e.g. joining and reporting in the
+// same month is "1", the following month is "2".
+function computeProjectPeriodMonths(
+  startYearStr: string,
+  startMonthStr: string,
+  targetYear: number,
+  targetMonth: number,
+): string {
+  const startYear = toNullableInt(startYearStr);
+  const startMonth = toNullableInt(startMonthStr);
+  if (startYear === null || startMonth === null) return "";
+  return String((targetYear - startYear) * 12 + (targetMonth - startMonth) + 1);
+}
+
 function buildPayload(state: FormState): unknown {
   const techStackItems = TECH_CATEGORY_OPTIONS.flatMap(({ value }) =>
     state.techStack[value].map((name) => ({ category: value, name })),
@@ -184,7 +199,14 @@ function buildPayload(state: FormState): unknown {
     projectPeriodOngoing: state.projectPeriodOngoing,
     projectPeriodEndYear: toNullableInt(state.projectPeriodEndYear),
     projectPeriodEndMonth: toNullableInt(state.projectPeriodEndMonth),
-    projectPeriodMonths: toNullableInt(state.projectPeriodMonths),
+    projectPeriodMonths: toNullableInt(
+      computeProjectPeriodMonths(
+        state.projectPeriodStartYear,
+        state.projectPeriodStartMonth,
+        state.targetYear,
+        state.targetMonth,
+      ),
+    ),
     workContent: state.workContent,
     devProcesses: state.devProcesses,
     deliverables: state.deliverables || null,
@@ -245,6 +267,13 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       cancelled = true;
     };
   }, [isEdit]);
+
+  const computedPeriodMonths = computeProjectPeriodMonths(
+    state.projectPeriodStartYear,
+    state.projectPeriodStartMonth,
+    state.targetYear,
+    state.targetMonth,
+  );
 
   function applyCarryOver() {
     if (!latestReport) return;
@@ -473,7 +502,11 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       <div className="form-row">
         <div className="field">
           <label htmlFor="gender">性別</label>
-          <input id="gender" value={state.gender} onChange={(e) => update("gender", e.target.value)} />
+          <select id="gender" value={state.gender} onChange={(e) => update("gender", e.target.value)}>
+            <option value="">選択してください</option>
+            <option value="男性">男性</option>
+            <option value="女性">女性</option>
+          </select>
         </div>
         <div className="field">
           <label htmlFor="age">年齢</label>
@@ -508,7 +541,6 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             value={state.workLocation}
             onChange={(e) => update("workLocation", e.target.value)}
             required
-            placeholder="例: 江戸川橋/在宅"
           />
         </div>
       </div>
@@ -578,7 +610,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
 
       <div className="form-row">
         <div className="field">
-          <label>期間開始</label>
+          <label>プロジェクト参画年月</label>
           <div style={{ display: "flex", gap: 8 }}>
             <input
               type="number"
@@ -630,12 +662,8 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
         )}
         <div className="field">
           <label htmlFor="projectPeriodMonths">期間(ヶ月数)</label>
-          <input
-            id="projectPeriodMonths"
-            type="number"
-            value={state.projectPeriodMonths}
-            onChange={(e) => update("projectPeriodMonths", e.target.value)}
-          />
+          <input id="projectPeriodMonths" type="number" value={computedPeriodMonths} disabled />
+          <span className="hint">プロジェクト参画年月と対象年/対象月から自動計算されます</span>
         </div>
       </div>
 
