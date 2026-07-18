@@ -37,6 +37,31 @@ export async function notifyFailedLogin(user: User) {
   }
 }
 
+export async function notifySubmissionReminder(
+  user: Pick<User, "loginId" | "name" | "email">,
+  targetYear: number,
+  targetMonth: number,
+): Promise<boolean> {
+  if (!resend) {
+    console.warn("RESEND_API_KEY が未設定のため、提出リマインドのメール送信はスキップされました。");
+    return false;
+  }
+  if (!user.email) return false;
+
+  try {
+    await resend.emails.send({
+      from: notifyFromAddress,
+      to: user.email,
+      subject: `【月次報告書アプリ】${targetYear}年${targetMonth}月分の提出リマインド`,
+      text: `${user.name}さん\n\n${targetYear}年${targetMonth}月分の月次報告書がまだ提出されていません。\nお手数ですが、アプリにログインのうえ作成・提出をお願いします。\n\nログインID: ${user.loginId}\n\n※すでに提出済みの場合は行き違いですのでご容赦ください。`,
+    });
+    return true;
+  } catch (error) {
+    console.error(`提出リマインドメールの送信に失敗しました (${user.loginId})`, error);
+    return false;
+  }
+}
+
 export async function notifyPasswordReset(
   user: Pick<User, "loginId" | "name" | "email">,
   newPassword: string,

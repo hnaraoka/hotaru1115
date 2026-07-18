@@ -1,6 +1,10 @@
 "use client";
 
+import { WORK_ALLOCATION_SUGGESTIONS } from "@/lib/constants";
+
 export type WorkAllocationRow = { category: string; percentage: number };
+
+const SUGGESTION_LIST_ID = "work-allocation-suggestions";
 
 export function WorkAllocationEditor({
   rows,
@@ -25,12 +29,18 @@ export function WorkAllocationEditor({
 
   return (
     <div className="work-allocation">
+      <datalist id={SUGGESTION_LIST_ID}>
+        {WORK_ALLOCATION_SUGGESTIONS.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
       {rows.map((row, i) => (
         <div key={i} className="work-allocation-row">
           <input
             value={row.category}
             onChange={(e) => updateRow(i, { category: e.target.value })}
             placeholder="例: 打ち合わせ"
+            list={SUGGESTION_LIST_ID}
           />
           <div className="work-allocation-percentage">
             <input

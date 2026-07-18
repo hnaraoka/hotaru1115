@@ -15,3 +15,12 @@ export async function PATCH(_request: NextRequest, { params }: Params) {
   });
   return NextResponse.json(notification);
 }
+
+export async function DELETE(_request: NextRequest, { params }: Params) {
+  const session = await requireAdminSession();
+  if (!session) return NextResponse.json({ error: "権限がありません" }, { status: 403 });
+
+  const { id } = await params;
+  await prisma.notification.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

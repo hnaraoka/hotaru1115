@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Report, TechStackItem, WorkAllocation } from "@prisma/client";
 import { reportInputSchema, type ReportInput } from "@/lib/reportSchema";
@@ -225,13 +225,21 @@ function buildPayload(state: FormState): unknown {
   };
 }
 
+function FieldErrorText({ messages }: { messages: string[] }) {
+  if (messages.length === 0) return null;
+  return <span className="field-error-text">{messages.join(" / ")}</span>;
+}
+
 export function ReportForm({ report }: { report?: ReportWithRelations }) {
   const router = useRouter();
   const isEdit = !!report;
   const [state, setState] = useState<FormState>(() => buildInitialState(report));
-  const [errors, setErrors] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  const [formErrors, setFormErrors] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const leavingRef = useRef(false);
   const [latestReport, setLatestReport] = useState<ReportWithRelations | null>(null);
   const [latestChecked, setLatestChecked] = useState(false);
   const [carriedOver, setCarriedOver] = useState(false);
@@ -242,7 +250,21 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setState((prev) => ({ ...prev, [key]: value }));
+    setDirty(true);
   }
+
+  // 未保存の入力があるままタブを閉じる/リロードする操作にブラウザ標準の
+  // 確認ダイアログを出す。保存成功後の画面遷移では出さない。
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      if (leavingRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
 
   // Load the user's most recent report to (a) suggest the next target month
   // and (b) offer a one-click carry-forward of the stable fields (company,
@@ -275,6 +297,15 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
     state.targetMonth,
   );
 
+  function errorsFor(...keys: string[]): string[] {
+    const merged = keys.flatMap((key) => fieldErrors[key] ?? []);
+    return [...new Set(merged)];
+  }
+
+  function fieldClass(...keys: string[]): string {
+    return errorsFor(...keys).length > 0 ? "field has-error" : "field";
+  }
+
   function applyCarryOver() {
     if (!latestReport) return;
     const techStack = emptyTechStack();
@@ -296,6 +327,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       devProcesses: latestReport.devProcesses,
       techStack,
     }));
+    setDirty(true);
     setCarriedOver(true);
   }
 
@@ -353,21 +385,46 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       return next;
     });
 
+    setDirty(true);
     setImportWarnings(parsed.warnings ?? []);
     setImported(true);
     setImporting(false);
   }
 
+  function handleCancel() {
+    if (dirty && !confirm("入力内容が保存されていません。破棄して前の画面に戻りますか？")) {
+      return;
+    }
+    leavingRef.current = true;
+    router.back();
+  }
+
+  function scrollToFirstError() {
+    requestAnimationFrame(() => {
+      const el = document.querySelector(".has-error") ?? document.querySelector(".error-banner");
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setErrors([]);
+    setFieldErrors({});
+    setFormErrors([]);
     setSubmitError(null);
 
     const payload = buildPayload(state);
     const parsed = reportInputSchema.safeParse(payload);
     if (!parsed.success) {
-      setErrors(parsed.error.issues.map((issue) => issue.message));
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      const nextFieldErrors: Record<string, string[]> = {};
+      const nextFormErrors: string[] = [];
+      for (const issue of parsed.error.issues) {
+        const key = typeof issue.path[0] === "string" ? issue.path[0] : null;
+        if (key) (nextFieldErrors[key] ??= []).push(issue.message);
+        else nextFormErrors.push(issue.message);
+      }
+      setFieldErrors(nextFieldErrors);
+      setFormErrors(nextFormErrors);
+      scrollToFirstError();
       return;
     }
 
@@ -390,18 +447,24 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
     }
 
     const saved = await res.json();
+    leavingRef.current = true;
     router.push(`/reports/${saved.id}`);
     router.refresh();
   }
 
+  const hasValidationErrors = Object.keys(fieldErrors).length > 0 || formErrors.length > 0;
+
   return (
     <form className="form" onSubmit={handleSubmit}>
-      {(errors.length > 0 || submitError) && (
+      {(hasValidationErrors || submitError) && (
         <div className="error-banner">
           {submitError && <div>{submitError}</div>}
-          {errors.length > 0 && (
+          {hasValidationErrors && (
+            <div>入力内容に誤りがあります。赤く表示された項目を確認してください。</div>
+          )}
+          {formErrors.length > 0 && (
             <ul style={{ paddingLeft: 18 }}>
-              {errors.map((e, i) => (
+              {formErrors.map((e, i) => (
                 <li key={i}>{e}</li>
               ))}
             </ul>
@@ -462,7 +525,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
         基本情報
       </div>
       <div className="form-row">
-        <div className="field">
+        <div className={fieldClass("submittedAt")}>
           <label htmlFor="submittedAt">提出日 *</label>
           <input
             id="submittedAt"
@@ -471,8 +534,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             onChange={(e) => update("submittedAt", e.target.value)}
             required
           />
+          <FieldErrorText messages={errorsFor("submittedAt")} />
         </div>
-        <div className="field">
+        <div className={fieldClass("targetYear")}>
           <label htmlFor="targetYear">対象年 *</label>
           <input
             id="targetYear"
@@ -481,8 +545,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             onChange={(e) => update("targetYear", Number(e.target.value))}
             required
           />
+          <FieldErrorText messages={errorsFor("targetYear")} />
         </div>
-        <div className="field">
+        <div className={fieldClass("targetMonth")}>
           <label htmlFor="targetMonth">対象月 *</label>
           <select
             id="targetMonth"
@@ -496,23 +561,26 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
               </option>
             ))}
           </select>
+          <FieldErrorText messages={errorsFor("targetMonth")} />
         </div>
       </div>
 
       <div className="form-row">
-        <div className="field">
+        <div className={fieldClass("gender")}>
           <label htmlFor="gender">性別</label>
           <select id="gender" value={state.gender} onChange={(e) => update("gender", e.target.value)}>
             <option value="">選択してください</option>
             <option value="男性">男性</option>
             <option value="女性">女性</option>
           </select>
+          <FieldErrorText messages={errorsFor("gender")} />
         </div>
-        <div className="field">
+        <div className={fieldClass("age")}>
           <label htmlFor="age">年齢</label>
           <input id="age" type="number" value={state.age} onChange={(e) => update("age", e.target.value)} />
+          <FieldErrorText messages={errorsFor("age")} />
         </div>
-        <div className="field">
+        <div className={fieldClass("experienceYears")}>
           <label htmlFor="experienceYears">経験年数</label>
           <input
             id="experienceYears"
@@ -520,12 +588,13 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             value={state.experienceYears}
             onChange={(e) => update("experienceYears", e.target.value)}
           />
+          <FieldErrorText messages={errorsFor("experienceYears")} />
         </div>
       </div>
 
       <div className="section-title">参画先・勤務</div>
       <div className="form-row">
-        <div className="field">
+        <div className={fieldClass("clientCompany")}>
           <label htmlFor="clientCompany">参画先企業 *</label>
           <input
             id="clientCompany"
@@ -534,8 +603,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             required
             maxLength={200}
           />
+          <FieldErrorText messages={errorsFor("clientCompany")} />
         </div>
-        <div className="field">
+        <div className={fieldClass("workLocation")}>
           <label htmlFor="workLocation">作業場所 *</label>
           <input
             id="workLocation"
@@ -544,11 +614,12 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             required
             maxLength={200}
           />
+          <FieldErrorText messages={errorsFor("workLocation")} />
         </div>
       </div>
 
       <div className="form-row">
-        <div className="field">
+        <div className={fieldClass("workDays")}>
           <label htmlFor="workDays">月間実労働日数</label>
           <input
             id="workDays"
@@ -556,8 +627,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             value={state.workDays}
             onChange={(e) => update("workDays", e.target.value)}
           />
+          <FieldErrorText messages={errorsFor("workDays")} />
         </div>
-        <div className="field">
+        <div className={fieldClass("workHours")}>
           <label htmlFor="workHours">月間実労働時間</label>
           <input
             id="workHours"
@@ -566,8 +638,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             value={state.workHours}
             onChange={(e) => update("workHours", e.target.value)}
           />
+          <FieldErrorText messages={errorsFor("workHours")} />
         </div>
-        <div className="field">
+        <div className={fieldClass("teleworkDays")}>
           <label htmlFor="teleworkDays">テレワーク日数</label>
           <input
             id="teleworkDays"
@@ -575,8 +648,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             value={state.teleworkDays}
             onChange={(e) => update("teleworkDays", e.target.value)}
           />
+          <FieldErrorText messages={errorsFor("teleworkDays")} />
         </div>
-        <div className="field">
+        <div className={fieldClass("onsiteDays")}>
           <label htmlFor="onsiteDays">現場日数</label>
           <input
             id="onsiteDays"
@@ -584,10 +658,16 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             value={state.onsiteDays}
             onChange={(e) => update("onsiteDays", e.target.value)}
           />
+          <FieldErrorText messages={errorsFor("onsiteDays")} />
         </div>
       </div>
 
       <div className="section-title">技術スタック</div>
+      {errorsFor("techStackItems").length > 0 && (
+        <div className="field has-error" style={{ gap: 0 }}>
+          <FieldErrorText messages={errorsFor("techStackItems")} />
+        </div>
+      )}
       <div className="form-row">
         {TECH_CATEGORY_OPTIONS.map(({ value, label }) => (
           <TagInput
@@ -600,7 +680,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       </div>
 
       <div className="section-title">プロジェクト</div>
-      <div className="field">
+      <div className={fieldClass("projectName")}>
         <label htmlFor="projectName">プロジェクト名 *</label>
         <input
           id="projectName"
@@ -609,10 +689,11 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           required
           maxLength={200}
         />
+        <FieldErrorText messages={errorsFor("projectName")} />
       </div>
 
       <div className="form-row">
-        <div className="field">
+        <div className={fieldClass("projectPeriodStartYear", "projectPeriodStartMonth")}>
           <label>プロジェクト参画年月</label>
           <div style={{ display: "flex", gap: 8 }}>
             <input
@@ -628,8 +709,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
               onChange={(e) => update("projectPeriodStartMonth", e.target.value)}
             />
           </div>
+          <FieldErrorText messages={errorsFor("projectPeriodStartYear", "projectPeriodStartMonth")} />
         </div>
-        <div className="field">
+        <div className={fieldClass("projectPeriodOngoing")}>
           <label htmlFor="projectPeriodOngoing">状況</label>
           <div style={{ display: "flex", alignItems: "center", gap: 8, height: 42 }}>
             <input
@@ -645,7 +727,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           </div>
         </div>
         {!state.projectPeriodOngoing && (
-          <div className="field">
+          <div className={fieldClass("projectPeriodEndYear", "projectPeriodEndMonth")}>
             <label>期間終了</label>
             <div style={{ display: "flex", gap: 8 }}>
               <input
@@ -661,6 +743,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
                 onChange={(e) => update("projectPeriodEndMonth", e.target.value)}
               />
             </div>
+            <FieldErrorText messages={errorsFor("projectPeriodEndYear", "projectPeriodEndMonth")} />
           </div>
         )}
         <div className="field">
@@ -670,7 +753,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
         </div>
       </div>
 
-      <div className="field">
+      <div className={fieldClass("workContent")}>
         <label htmlFor="workContent">作業内容 *</label>
         <textarea
           id="workContent"
@@ -682,18 +765,20 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           maxLength={2000}
         />
         <span className="hint">{state.workContent.length} / 2000文字</span>
+        <FieldErrorText messages={errorsFor("workContent")} />
       </div>
 
-      <div className="field">
+      <div className={fieldClass("devProcesses")}>
         <label>開発工程 *</label>
         <DevProcessCheckboxes
           selected={state.devProcesses}
           onChange={(v) => update("devProcesses", v)}
         />
+        <FieldErrorText messages={errorsFor("devProcesses")} />
       </div>
 
       <div className="section-title">成果物・所感</div>
-      <div className="field">
+      <div className={fieldClass("deliverables")}>
         <label htmlFor="deliverables">成果物</label>
         <textarea
           id="deliverables"
@@ -702,8 +787,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           maxLength={1000}
         />
         <span className="hint">{state.deliverables.length} / 1000文字</span>
+        <FieldErrorText messages={errorsFor("deliverables")} />
       </div>
-      <div className="field">
+      <div className={fieldClass("troubles")}>
         <label htmlFor="troubles">今月の困った点と対応・解決方法</label>
         <textarea
           id="troubles"
@@ -712,8 +798,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           maxLength={1000}
         />
         <span className="hint">{state.troubles.length} / 1000文字</span>
+        <FieldErrorText messages={errorsFor("troubles")} />
       </div>
-      <div className="field">
+      <div className={fieldClass("goodPoints")}>
         <label htmlFor="goodPoints">今月の良かった点/改善提案など</label>
         <textarea
           id="goodPoints"
@@ -722,12 +809,13 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           maxLength={1000}
         />
         <span className="hint">{state.goodPoints.length} / 1000文字</span>
+        <FieldErrorText messages={errorsFor("goodPoints")} />
       </div>
 
       <div className="section-title">自己評価</div>
       <div className="form-row">
         {RATING_FIELDS.map(({ key, label }) => (
-          <div className="field" key={key}>
+          <div className={fieldClass(key)} key={key}>
             <label htmlFor={key}>{label} *</label>
             <select
               id={key}
@@ -744,18 +832,22 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
                 </option>
               ))}
             </select>
+            <FieldErrorText messages={errorsFor(key)} />
           </div>
         ))}
       </div>
 
       <div className="section-title">作業配分</div>
-      <WorkAllocationEditor
-        rows={state.workAllocations}
-        onChange={(rows) => update("workAllocations", rows)}
-      />
+      <div className={fieldClass("workAllocations")} style={{ gap: 10 }}>
+        <WorkAllocationEditor
+          rows={state.workAllocations}
+          onChange={(rows) => update("workAllocations", rows)}
+        />
+        <FieldErrorText messages={errorsFor("workAllocations")} />
+      </div>
 
       <div className="form-actions">
-        <button type="button" className="btn btn-secondary" onClick={() => router.back()}>
+        <button type="button" className="btn btn-secondary" onClick={handleCancel}>
           キャンセル
         </button>
         <button type="submit" className="btn btn-primary" disabled={submitting}>

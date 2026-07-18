@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login"];
+// /api/cron はセッションではなく CRON_SECRET でルート自身が認証する
+const PUBLIC_PATHS = ["/login", "/api/cron"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;

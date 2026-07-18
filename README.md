@@ -49,6 +49,20 @@ Next.js (Node.js) + Prisma + PostgreSQL で構築した、SES常駐エンジニ�
 - **モバイル対応の調整**: スマートフォン幅（375〜390px程度）でヘッダーのナビゲーションが崩れていた問題、報告書詳細画面のPDF操作ボタンが折り返し時に単語の途中で改行されてしまう問題を修正しました。フォーム・一覧・管理画面は元々レスポンシブなグリッド/flexレイアウトで実装していたため、大きな崩れはありませんでした。
 - **全体QA**: 認証・管理者機能・報告書CRUD・PDF出力・前月引き継ぎ・過去PDF読み込みを通しで再確認し、編集後のデータ保存や削除が正しく動作することを確認しました。
 
+## 現状調査レポート対応で追加した機能（B1〜B6・C2）
+
+- **報告書一覧の絞り込み・年度グルーピング（B1）**: 一覧を年度ごとの見出しでグルーピングし、対象年のプルダウンと参画先企業・プロジェクト名のキーワードで絞り込めるようにしました。
+- **フィールド単位のエラー表示（B2）**: 入力エラーがあると該当する入力欄が赤く縁取られ、エラー文がその項目の直下に表示されます。画面上部には「赤く表示された項目を確認してください」という要約バナーを出し、最初のエラー項目まで自動スクロールします。
+- **入力途中の離脱確認（B3）**: フォームに変更がある状態で「キャンセル」を押すと確認ダイアログが表示されます。タブを閉じる・リロードする操作にもブラウザ標準の警告を出します（保存成功後の遷移では出ません）。
+- **通知の削除・一括操作（B4）**: 管理者ダッシュボードの通知に「すべて既読にする」「既読を一括削除」と、通知ごとの「削除」を追加しました。
+- **モバイル表示の総点検（B5）**: 主要8画面（一覧・フォーム・詳細・管理画面各種）を375px幅で確認し、横スクロールが発生しないこと・ボタンが折り返して収まることを確認しました。長い社名やメールアドレスが枠を突き抜けないよう折り返し指定も追加しています。
+- **作業配分カテゴリの入力候補（B6）**: 作業配分の項目名に「打ち合わせ」「実装」などのよく使う候補をプルダウン（datalist）で提示します。表記ゆれを減らしつつ、従来どおり自由入力もできます。
+- **提出リマインド通知（C2）**: 3つの経路でリマインドできます。
+  1. **自動送信（Vercel Cron）**: 毎月25日 9:00（JST）に `/api/cron/remind` が呼ばれ、当月分が未提出の有効ユーザーへメールを送信します（`vercel.json` で日時を変更可能）。利用するには `CRON_SECRET` 環境変数の設定が必要で、未設定の場合は自動送信は無効です。メールアドレス未登録のユーザーはメール対象外です。
+  2. **手動送信**: 管理者は「提出状況」画面の「未提出者にリマインドを送る」ボタンから、表示中の対象月の未提出者へ即時にリマインドメールを送れます。
+  3. **画面内バナー**: 当月分が未提出のユーザーには、報告書一覧の上部に「今月分の報告書はまだ提出されていません」というバナーが表示されます（報告書を1件も作ったことがない新規ユーザーには表示されません）。
+  - 自動・手動いずれの実行結果も管理者ダッシュボードの通知一覧に記録されます（未提出者数・メール送信数・メール未登録数）。
+
 ## 技術構成
 
 - [Next.js](https://nextjs.org)（App Router / TypeScript）
@@ -76,6 +90,7 @@ cp .env.example .env
 - `AUTH_SECRET`: `openssl rand -base64 32` などで生成したランダム文字列
 - `AUTH_TRUST_HOST`: ローカル開発や Vercel 以外の環境では `true` を設定
 - `RESEND_API_KEY` / `NOTIFY_FROM_EMAIL`: 管理者へのメール通知を使う場合に設定（未設定でも動作します）
+- `CRON_SECRET`: 提出リマインドの自動送信（Vercel Cron）を使う場合に設定（未設定の場合、自動送信のみ無効になります）
 
 ### 3. マイグレーションの適用
 
@@ -105,14 +120,15 @@ npm run dev
 2. **Storage** タブから Vercel Postgres（または任意の PostgreSQL、例: Neon / Supabase）を作成し、プロジェクトに接続します。接続すると `DATABASE_URL` 環境変数が自動的に設定されます（自動設定されない場合は Project Settings > Environment Variables で手動設定してください）。
 3. `AUTH_SECRET` を Project Settings > Environment Variables に設定します。
 4. （任意）管理者へのメール通知を使う場合は `RESEND_API_KEY` / `NOTIFY_FROM_EMAIL` を設定します。
-5. 初回デプロイ前後に、マイグレーションと初期管理者アカウント作成を実行します（`DATABASE_URL` をデプロイ先のデータベースに向けた状態で実行してください）。
+5. （任意）提出リマインドの自動送信を使う場合は `CRON_SECRET` を設定します（`openssl rand -hex 32` などで生成）。`vercel.json` の cron 設定により、Vercel が毎月25日 0:00 UTC（9:00 JST）に `/api/cron/remind` を呼び出します。
+6. 初回デプロイ前後に、マイグレーションと初期管理者アカウント作成を実行します（`DATABASE_URL` をデプロイ先のデータベースに向けた状態で実行してください）。
 
    ```bash
    npx prisma migrate deploy
    npm run db:seed
    ```
 
-6. デプロイを実行します。`npm run build` は自動的に `prisma generate` を実行してから `next build` を行います（`postinstall` でも `prisma generate` を実行するため、Vercel のキャッシュ環境でも Prisma Client が生成されます）。
+7. デプロイを実行します。`npm run build` は自動的に `prisma generate` を実行してから `next build` を行います（`postinstall` でも `prisma generate` を実行するため、Vercel のキャッシュ環境でも Prisma Client が生成されます）。
 
 ## PDFの日本語フォントについて
 
@@ -127,7 +143,9 @@ src/
     admin/                        管理者ダッシュボード・ユーザー管理画面
     api/auth/[...nextauth]/       NextAuth ハンドラー
     api/admin/users/              ユーザーCRUD API
-    api/admin/notifications/      通知既読API
+    api/admin/notifications/      通知の既読・削除・一括操作API
+    api/admin/reminders/          提出リマインドの手動送信API（管理者用）
+    api/cron/remind/              提出リマインドの自動送信（Vercel Cron用）
     reports/new, [id], [id]/edit  報告書の新規作成・詳細・編集画面
     api/reports/                  報告書CRUD API
     api/reports/[id]/pdf/         PDF生成API
@@ -138,7 +156,8 @@ src/
   lib/
     prisma.ts                     Prisma Client シングルトン
     auth.ts                       NextAuth設定（Credentials Provider）
-    notify.ts                     ログイン失敗時の通知処理
+    notify.ts                     ログイン失敗・パスワード変更・リマインドのメール通知
+    reminder.ts                   提出リマインドの送信処理（未提出者の抽出・記録）
     password.ts                   初期パスワード生成・ハッシュ化
     requireAdmin.ts / requireUser.ts  権限チェック
     constants.ts                  開発工程・技術カテゴリ・評価段階の定義
@@ -154,4 +173,5 @@ src/
 prisma/
   schema.prisma                   データモデル定義
   seed.ts                         初期管理者アカウント作成スクリプト
+vercel.json                       Vercel Cron の設定（毎月25日にリマインド送信）
 ```

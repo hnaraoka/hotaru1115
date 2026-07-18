@@ -40,3 +40,18 @@ export const RATING_FIELDS = [
 ] as const;
 
 export const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+// 作業配分カテゴリの入力候補。表記ゆれ（打ち合わせ/ミーティング/MTG など）を
+// 減らすための推奨候補で、これ以外の自由入力も引き続き可能。
+export const WORK_ALLOCATION_SUGGESTIONS = [
+  "打ち合わせ",
+  "要件定義",
+  "設計",
+  "実装",
+  "テスト",
+  "レビュー",
+  "調査・検証",
+  "資料作成",
+  "保守・運用",
+  "その他",
+] as const;

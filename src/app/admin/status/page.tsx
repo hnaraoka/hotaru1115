@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { MONTH_OPTIONS } from "@/lib/constants";
+import { SendRemindersButton } from "@/components/admin/SendRemindersButton";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,11 @@ export default async function AdminStatusPage({ searchParams }: Props) {
             {users.length}人中 <strong>{submittedCount}人提出済み</strong>（{users.length - submittedCount}人未提出）
           </p>
         </div>
+        <SendRemindersButton
+          year={targetYear}
+          month={targetMonth}
+          unsubmittedCount={users.length - submittedCount}
+        />
       </div>
 
       <ul className="report-list">
