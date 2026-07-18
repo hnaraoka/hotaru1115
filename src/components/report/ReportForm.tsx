@@ -532,6 +532,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             value={state.clientCompany}
             onChange={(e) => update("clientCompany", e.target.value)}
             required
+            maxLength={200}
           />
         </div>
         <div className="field">
@@ -541,6 +542,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
             value={state.workLocation}
             onChange={(e) => update("workLocation", e.target.value)}
             required
+            maxLength={200}
           />
         </div>
       </div>
@@ -605,6 +607,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           value={state.projectName}
           onChange={(e) => update("projectName", e.target.value)}
           required
+          maxLength={200}
         />
       </div>
 
@@ -676,7 +679,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           required
           placeholder="箇条書きで入力してください"
           style={{ minHeight: 120 }}
+          maxLength={2000}
         />
+        <span className="hint">{state.workContent.length} / 2000文字</span>
       </div>
 
       <div className="field">
@@ -694,7 +699,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           id="deliverables"
           value={state.deliverables}
           onChange={(e) => update("deliverables", e.target.value)}
+          maxLength={1000}
         />
+        <span className="hint">{state.deliverables.length} / 1000文字</span>
       </div>
       <div className="field">
         <label htmlFor="troubles">今月の困った点と対応・解決方法</label>
@@ -702,7 +709,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           id="troubles"
           value={state.troubles}
           onChange={(e) => update("troubles", e.target.value)}
+          maxLength={1000}
         />
+        <span className="hint">{state.troubles.length} / 1000文字</span>
       </div>
       <div className="field">
         <label htmlFor="goodPoints">今月の良かった点/改善提案など</label>
@@ -710,7 +719,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
           id="goodPoints"
           value={state.goodPoints}
           onChange={(e) => update("goodPoints", e.target.value)}
+          maxLength={1000}
         />
+        <span className="hint">{state.goodPoints.length} / 1000文字</span>
       </div>
 
       <div className="section-title">自己評価</div>

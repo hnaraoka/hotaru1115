@@ -23,7 +23,14 @@ export async function GET(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "権限がありません" }, { status: 403 });
   }
 
-  const buffer = await renderToBuffer(ReportPdfDocument({ report }));
+  let buffer: Buffer;
+  try {
+    buffer = await renderToBuffer(ReportPdfDocument({ report }));
+  } catch (error) {
+    console.error("PDF生成に失敗しました", error);
+    return NextResponse.json({ error: "PDFの生成に失敗しました。時間をおいて再度お試しください。" }, { status: 500 });
+  }
+
   const fileName = `月次報告書_${report.targetYear}${String(report.targetMonth).padStart(2, "0")}.pdf`;
 
   return new NextResponse(new Uint8Array(buffer), {
