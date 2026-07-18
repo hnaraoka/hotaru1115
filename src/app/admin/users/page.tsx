@@ -15,9 +15,14 @@ export default async function AdminUsersPage() {
           <h1>ユーザー管理</h1>
           <p>ログインID・パスワードの発行や権限の変更ができます。</p>
         </div>
-        <Link href="/admin/users/new" className="btn btn-primary">
-          ＋ ユーザー追加
-        </Link>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link href="/admin/users/bulk" className="btn btn-secondary">
+            CSVで一括登録
+          </Link>
+          <Link href="/admin/users/new" className="btn btn-primary">
+            ＋ ユーザー追加
+          </Link>
+        </div>
       </div>
 
       <ul className="report-list">
