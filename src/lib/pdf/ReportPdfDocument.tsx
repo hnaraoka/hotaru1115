@@ -378,7 +378,7 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
                       ))}
                     </View>
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                      <Text style={{ fontSize: 9, color: active ? "#0b5c1f" : "transparent" }}>○</Text>
+                      {active && <Text style={{ fontSize: 9, color: "#0b5c1f" }}>○</Text>}
                     </View>
                   </View>
                 );
@@ -396,7 +396,11 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
                 <Text style={styles.bodyText}>
                   {report.deliverables
                     .split("\n")
-                    .map((line) => (line.trim() ? `・${line.trim()}` : line))
+                    .map((line) => {
+                      const trimmed = line.trim();
+                      if (!trimmed) return line;
+                      return `・${trimmed.replace(/^[・･]\s*/, "")}`;
+                    })
                     .join("\n")}
                 </Text>
               </ValueCell>
