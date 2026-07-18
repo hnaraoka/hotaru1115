@@ -43,7 +43,7 @@ export default async function ReportDetailPage({ params }: Props) {
             {report.targetYear}年{report.targetMonth}月分 月次報告書
           </p>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <a
             className="btn btn-secondary"
             href={`/api/reports/${report.id}/pdf`}
