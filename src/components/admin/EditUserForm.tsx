@@ -146,6 +146,9 @@ export function EditUserForm({ user }: { user: UserData }) {
         <div className="section-title">パスワードを変更する</div>
         <p className="hint" style={{ margin: 0 }}>
           自分でパスワードを指定したい場合は入力してください。空欄のままなら変更されません。
+          {user.email
+            ? "このユーザーにはメールアドレスが登録されているため、変更後のパスワードは自動的にメールでも通知されます。"
+            : "メールアドレスが未登録のため、変更後は口頭などで直接お伝えください。"}
         </p>
         <div className="form-row">
           <div className="field">

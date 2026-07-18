@@ -36,3 +36,29 @@ export async function notifyFailedLogin(user: User) {
     console.error("ログイン失敗通知メールの送信に失敗しました", error);
   }
 }
+
+export async function notifyPasswordReset(
+  user: Pick<User, "loginId" | "name" | "email">,
+  newPassword: string,
+) {
+  if (!resend) {
+    console.warn("RESEND_API_KEY が未設定のため、パスワード変更のメール通知はスキップされました。");
+    return;
+  }
+
+  if (!user.email) {
+    console.warn(`${user.loginId} にメールアドレスが未設定のため、パスワード変更通知をスキップしました。`);
+    return;
+  }
+
+  try {
+    await resend.emails.send({
+      from: notifyFromAddress,
+      to: user.email,
+      subject: "【月次報告書アプリ】パスワードが変更されました",
+      text: `${user.name}さん\n\n管理者によりログインパスワードが変更されました。\n\nログインID: ${user.loginId}\n新しいパスワード: ${newPassword}\n\n次回ログイン後、必要であればパスワードを変更してください。`,
+    });
+  } catch (error) {
+    console.error("パスワード変更通知メールの送信に失敗しました", error);
+  }
+}

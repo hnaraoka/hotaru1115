@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/requireAdmin";
 import { generateInitialPassword, hashPassword } from "@/lib/password";
+import { notifyPasswordReset } from "@/lib/notify";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,6 +28,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (typeof body.isActive === "boolean") data.isActive = body.isActive;
 
   let newPassword: string | null = null;
+  let plainPasswordForEmail: string | null = null;
   if (typeof body.password === "string" && body.password.trim() !== "") {
     const password = body.password.trim();
     if (password.length < 8) {
@@ -34,10 +36,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     }
     data.passwordHash = await hashPassword(password);
     data.failedLoginCount = 0;
+    plainPasswordForEmail = password;
   } else if (body.resetPassword === true) {
     newPassword = generateInitialPassword();
     data.passwordHash = await hashPassword(newPassword);
     data.failedLoginCount = 0;
+    plainPasswordForEmail = newPassword;
   }
 
   const user = await prisma.user.update({
@@ -45,6 +49,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     data,
     select: { id: true, loginId: true, name: true, role: true, email: true, isActive: true },
   });
+
+  if (plainPasswordForEmail) {
+    await notifyPasswordReset(user, plainPasswordForEmail);
+  }
 
   return NextResponse.json({ user, newPassword });
 }
