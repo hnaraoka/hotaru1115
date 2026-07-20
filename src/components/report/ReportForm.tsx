@@ -13,6 +13,13 @@ import type { ParsedReportFields } from "@/lib/pdfImport/parseLegacyReport";
 
 type ReportWithRelations = Report & { techStackItems: TechStackItem[]; workAllocations: WorkAllocation[] };
 
+type ReferenceFields = {
+  workContent?: string;
+  deliverables?: string;
+  troubles?: string;
+  goodPoints?: string;
+};
+
 type FormState = {
   submittedAt: string;
   targetYear: number;
@@ -230,6 +237,29 @@ function FieldErrorText({ messages }: { messages: string[] }) {
   return <span className="field-error-text">{messages.join(" / ")}</span>;
 }
 
+function ReferenceField({
+  label,
+  value,
+  onCopy,
+}: {
+  label: string;
+  value: string | undefined;
+  onCopy: () => void;
+}) {
+  if (!value) return null;
+  return (
+    <details className="reference-panel">
+      <summary>{label}を見る（参考）</summary>
+      <div className="reference-panel-body">
+        <pre className="reference-panel-text">{value}</pre>
+        <button type="button" className="btn btn-secondary" onClick={onCopy}>
+          この内容をコピー
+        </button>
+      </div>
+    </details>
+  );
+}
+
 export function ReportForm({ report }: { report?: ReportWithRelations }) {
   const router = useRouter();
   const isEdit = !!report;
@@ -247,10 +277,17 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
   const [imported, setImported] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [referenceContent, setReferenceContent] = useState<ReferenceFields>({});
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setState((prev) => ({ ...prev, [key]: value }));
     setDirty(true);
+  }
+
+  // 参考パネルの内容を入力欄へ反映する。空欄ならそのままセット、既に入力
+  // があれば消さずに改行区切りで末尾に追記する。
+  function copyReference(key: "workContent" | "deliverables" | "troubles" | "goodPoints", value: string) {
+    update(key, state[key] ? `${state[key]}\n${value}` : value);
   }
 
   // 未保存の入力があるままタブを閉じる/リロードする操作にブラウザ標準の
@@ -326,7 +363,6 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       projectPeriodOngoing: latestReport.projectPeriodOngoing,
       devProcesses: latestReport.devProcesses,
       techStack,
-      workContent: latestReport.workContent,
       condition: latestReport.condition ?? prev.condition,
       motivation: latestReport.motivation ?? prev.motivation,
       workload: latestReport.workload ?? prev.workload,
@@ -338,6 +374,14 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map((w) => ({ category: w.category, percentage: w.percentage })),
     }));
+    // 作業内容・成果物・困った点・良かった点は自動入力せず、参考表示のみに回す
+    // （月ごとに書き直す前提の項目のため）。
+    setReferenceContent({
+      workContent: latestReport.workContent || undefined,
+      deliverables: latestReport.deliverables ?? undefined,
+      troubles: latestReport.troubles ?? undefined,
+      goodPoints: latestReport.goodPoints ?? undefined,
+    });
     setDirty(true);
     setCarriedOver(true);
   }
@@ -384,10 +428,8 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       if (parsed.experienceYears !== undefined) next.experienceYears = parsed.experienceYears;
       if (parsed.clientCompany !== undefined) next.clientCompany = parsed.clientCompany;
       if (parsed.workLocation !== undefined) next.workLocation = parsed.workLocation;
-      if (parsed.workDays !== undefined) next.workDays = parsed.workDays;
-      if (parsed.workHours !== undefined) next.workHours = parsed.workHours;
-      if (parsed.teleworkDays !== undefined) next.teleworkDays = parsed.teleworkDays;
-      if (parsed.onsiteDays !== undefined) next.onsiteDays = parsed.onsiteDays;
+      // 月間実労働日数・時間・テレワーク日数・現場日数は月ごとに変わるため、
+      // 「前回のデータを引き継ぐ」と同様に読み込み元の値をセットしない。
       if (parsed.projectName !== undefined) next.projectName = parsed.projectName;
       if (parsed.projectPeriodStartYear !== undefined) next.projectPeriodStartYear = parsed.projectPeriodStartYear;
       if (parsed.projectPeriodStartMonth !== undefined) next.projectPeriodStartMonth = parsed.projectPeriodStartMonth;
@@ -395,11 +437,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       if (parsed.projectPeriodEndYear !== undefined) next.projectPeriodEndYear = parsed.projectPeriodEndYear;
       if (parsed.projectPeriodEndMonth !== undefined) next.projectPeriodEndMonth = parsed.projectPeriodEndMonth;
       if (parsed.projectPeriodMonths !== undefined) next.projectPeriodMonths = parsed.projectPeriodMonths;
-      if (parsed.workContent !== undefined) next.workContent = parsed.workContent;
       if (parsed.devProcesses !== undefined) next.devProcesses = parsed.devProcesses;
-      if (parsed.deliverables !== undefined) next.deliverables = parsed.deliverables;
-      if (parsed.troubles !== undefined) next.troubles = parsed.troubles;
-      if (parsed.goodPoints !== undefined) next.goodPoints = parsed.goodPoints;
       if (parsed.condition !== undefined) next.condition = parsed.condition;
       if (parsed.motivation !== undefined) next.motivation = parsed.motivation;
       if (parsed.workload !== undefined) next.workload = parsed.workload;
@@ -409,6 +447,13 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       if (parsed.techStack !== undefined) next.techStack = parsed.techStack;
       if (parsed.workAllocations !== undefined) next.workAllocations = parsed.workAllocations;
       return next;
+    });
+    // 作業内容・成果物・困った点・良かった点は自動入力せず、参考表示のみに回す。
+    setReferenceContent({
+      workContent: parsed.workContent,
+      deliverables: parsed.deliverables,
+      troubles: parsed.troubles,
+      goodPoints: parsed.goodPoints,
     });
   }
 
@@ -807,6 +852,11 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
         />
         <span className="hint">{state.workContent.length} / 2000文字</span>
         <FieldErrorText messages={errorsFor("workContent")} />
+        <ReferenceField
+          label="前回の作業内容"
+          value={referenceContent.workContent}
+          onCopy={() => copyReference("workContent", referenceContent.workContent!)}
+        />
       </div>
 
       <div className={fieldClass("devProcesses")}>
@@ -829,6 +879,11 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
         />
         <span className="hint">{state.deliverables.length} / 1000文字</span>
         <FieldErrorText messages={errorsFor("deliverables")} />
+        <ReferenceField
+          label="前回の成果物"
+          value={referenceContent.deliverables}
+          onCopy={() => copyReference("deliverables", referenceContent.deliverables!)}
+        />
       </div>
       <div className={fieldClass("troubles")}>
         <label htmlFor="troubles">今月の困った点と対応・解決方法</label>
@@ -840,6 +895,11 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
         />
         <span className="hint">{state.troubles.length} / 1000文字</span>
         <FieldErrorText messages={errorsFor("troubles")} />
+        <ReferenceField
+          label="前回の困った点・対応方法"
+          value={referenceContent.troubles}
+          onCopy={() => copyReference("troubles", referenceContent.troubles!)}
+        />
       </div>
       <div className={fieldClass("goodPoints")}>
         <label htmlFor="goodPoints">今月の良かった点/改善提案など</label>
@@ -851,6 +911,11 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
         />
         <span className="hint">{state.goodPoints.length} / 1000文字</span>
         <FieldErrorText messages={errorsFor("goodPoints")} />
+        <ReferenceField
+          label="前回の良かった点・改善提案"
+          value={referenceContent.goodPoints}
+          onCopy={() => copyReference("goodPoints", referenceContent.goodPoints!)}
+        />
       </div>
 
       <div className="section-title">自己評価</div>

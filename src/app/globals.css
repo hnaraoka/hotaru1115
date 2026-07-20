@@ -297,6 +297,54 @@ select {
   font-weight: 400;
 }
 
+.reference-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--muted) 6%, transparent);
+}
+
+.reference-panel summary {
+  cursor: pointer;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  list-style: none;
+}
+
+.reference-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.reference-panel summary::before {
+  content: "▶ ";
+}
+
+.reference-panel[open] summary::before {
+  content: "▼ ";
+}
+
+.reference-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.reference-panel-text {
+  margin: 0;
+  max-height: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--foreground);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
 .field input,
 .field textarea,
 .field select {
