@@ -512,7 +512,9 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
 
       {!isEdit && (
         <div className="carry-over-banner">
-          <span>過去に作成した月次報告書のPDFまたはExcelファイルがあれば、読み込んでフォームに自動入力できます。</span>
+          <span style={{ flexBasis: "100%" }}>
+            過去に作成した月次報告書のPDFまたはExcelファイルがあれば、読み込んでフォームに自動入力できます。
+          </span>
           <label className="btn btn-secondary" style={{ cursor: "pointer" }}>
             {importing ? "読み込み中..." : "PDFから読み込む"}
             <input

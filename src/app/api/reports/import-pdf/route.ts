@@ -31,6 +31,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(parsed);
   } catch (error) {
     console.error("PDF読み込みに失敗しました", error);
-    return NextResponse.json({ error: "PDFの読み込みに失敗しました。対応していない形式の可能性があります。" }, { status: 422 });
+    return NextResponse.json(
+      {
+        error: "PDFの読み込みに失敗しました。対応していない形式の可能性があります。",
+        detail: error instanceof Error ? error.message : String(error),
+      },
+      { status: 422 },
+    );
   }
 }
