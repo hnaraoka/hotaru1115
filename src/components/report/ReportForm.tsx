@@ -342,7 +342,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
     setCarriedOver(true);
   }
 
-  async function handleImportPdf(file: File) {
+  async function handleImport(file: File, endpoint: string, defaultErrorMessage: string) {
     setImporting(true);
     setImportError(null);
     setImportWarnings([]);
@@ -350,16 +350,31 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch("/api/reports/import-pdf", { method: "POST", body: formData });
+    const res = await fetch(endpoint, { method: "POST", body: formData });
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      setImportError(data.error ?? "PDFの読み込みに失敗しました");
+      setImportError(data.error ?? defaultErrorMessage);
       setImporting(false);
       return;
     }
 
-    const parsed = data as ParsedReportFields;
+    applyParsedFields(data as ParsedReportFields);
+    setDirty(true);
+    setImportWarnings((data as ParsedReportFields).warnings ?? []);
+    setImported(true);
+    setImporting(false);
+  }
+
+  function handleImportPdf(file: File) {
+    return handleImport(file, "/api/reports/import-pdf", "PDFの読み込みに失敗しました");
+  }
+
+  function handleImportExcel(file: File) {
+    return handleImport(file, "/api/reports/import-excel", "Excelの読み込みに失敗しました");
+  }
+
+  function applyParsedFields(parsed: ParsedReportFields) {
     setState((prev) => {
       const next = { ...prev };
       if (parsed.targetYear !== undefined) next.targetYear = parsed.targetYear;
@@ -395,11 +410,6 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       if (parsed.workAllocations !== undefined) next.workAllocations = parsed.workAllocations;
       return next;
     });
-
-    setDirty(true);
-    setImportWarnings(parsed.warnings ?? []);
-    setImported(true);
-    setImporting(false);
   }
 
   function handleCancel() {
@@ -502,7 +512,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
 
       {!isEdit && (
         <div className="carry-over-banner">
-          <span>過去に作成したExcel由来のPDF帳票があれば、読み込んでフォームに自動入力できます。</span>
+          <span>過去に作成した月次報告書のPDFまたはExcelファイルがあれば、読み込んでフォームに自動入力できます。</span>
           <label className="btn btn-secondary" style={{ cursor: "pointer" }}>
             {importing ? "読み込み中..." : "PDFから読み込む"}
             <input
@@ -514,6 +524,20 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
                 const file = e.target.files?.[0];
                 e.target.value = "";
                 if (file) handleImportPdf(file);
+              }}
+            />
+          </label>
+          <label className="btn btn-secondary" style={{ cursor: "pointer" }}>
+            {importing ? "読み込み中..." : "Excelから読み込む"}
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              style={{ display: "none" }}
+              disabled={importing}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) handleImportExcel(file);
               }}
             />
           </label>

@@ -1,6 +1,7 @@
-import { DEV_PROCESS_OPTIONS, RATING_OPTIONS } from "@/lib/constants";
+import { DEV_PROCESS_OPTIONS } from "@/lib/constants";
 import type { TechCategoryValue } from "@/lib/constants";
 import type { PdfTextItem } from "@/lib/pdfImport/extractTextItems";
+import { normalizeRatingLabel } from "@/lib/reportImport/ratingLabels";
 
 export type ParsedReportFields = {
   targetYear?: number;
@@ -244,31 +245,61 @@ export function parseLegacyReport(items: PdfTextItem[]): ParsedReportFields {
     }
   }
 
-  // Bullet items (e.g. "・WBS管理表") are only ever used for the 成果物 list in
-  // this template, so they can be found directly rather than via a y-band —
-  // which matters because 成果物's label sits *between* its own bullets
-  // (same "label centered in its content" pattern as the tech-stack labels).
-  const deliverableBullets = items
-    .filter((it) => it.x < 300 && /^[・]/.test(it.text.trim()))
-    .sort((a, b) => b.y - a.y);
+  // 成果物のテキストはこのテンプレートでは「・」プレフィックス無しの単純な
+  // 折り返し段落になっている。項目名／作業内容と同じ列（x: 120〜400）に
+  // 縦に並んでいるだけで、成果物の見出しとの間に明確な区切り線もないため、
+  // 「困った点」ラベルの上端までを一続きの帯として集め、行間の空きが
+  // 通常の折り返し行間（約11〜13pt）より明らかに大きい箇所（＝作業内容と
+  // 成果物の間の区切り）で分割する。
+  const deliverablesLabel = findLabel(items, "成果物");
+  const troublesLabel1 = findLabelStartingWith(items, "今月の困った点");
+  const troublesLabel2 = findLabel(items, "対応・解決方法");
+  const troublesTopBoundary = troublesLabel1
+    ? Math.max(troublesLabel1.y, troublesLabel2?.y ?? troublesLabel1.y) + 12
+    : undefined;
+  const SECTION_GAP_THRESHOLD = 25;
 
   if (projectHeader) {
-    // Work content stops just above the first 成果物 bullet (if any exist),
-    // otherwise falls back to a generous default span.
-    const lowerLimit = deliverableBullets.length > 0 ? deliverableBullets[0].y + 3 : projectHeader.y - 170;
-    const contentItems = items
+    const lowerLimit = troublesTopBoundary ?? projectHeader.y - 170;
+    const bandItems = items
       .filter((it) => it.x >= 120 && it.x < 400 && it.y < projectHeader.y && it.y > lowerLimit && it !== projectHeader)
       .sort((a, b) => b.y - a.y);
 
-    if (contentItems.length > 0) {
-      result.projectName = contentItems[0].text.trim();
-      result.workContent = contentItems
+    let workContentItems = bandItems;
+    let deliverableItems: PdfTextItem[] = [];
+
+    if (deliverablesLabel && bandItems.length > 1) {
+      let splitIndex = -1;
+      let largestGap = SECTION_GAP_THRESHOLD;
+      for (let i = 0; i < bandItems.length - 1; i++) {
+        const gap = bandItems[i].y - bandItems[i + 1].y;
+        if (gap > largestGap) {
+          largestGap = gap;
+          splitIndex = i;
+        }
+      }
+      if (splitIndex >= 0) {
+        workContentItems = bandItems.slice(0, splitIndex + 1);
+        deliverableItems = bandItems.slice(splitIndex + 1);
+      }
+    }
+
+    if (workContentItems.length > 0) {
+      result.projectName = workContentItems[0].text.trim();
+      result.workContent = workContentItems
         .slice(1)
         .map((it) => it.text.replace(/^[　●・]+/, "").trim())
         .filter(Boolean)
         .join("\n");
     } else {
       warnings.push("プロジェクト名・作業内容を読み取れませんでした");
+    }
+
+    if (deliverableItems.length > 0) {
+      result.deliverables = deliverableItems
+        .map((it) => it.text.replace(/^[　●・]+/, "").trim())
+        .filter(Boolean)
+        .join("\n");
     }
   } else {
     warnings.push("「プロジェクト名／作業内容」の項目が見つかりませんでした");
@@ -312,18 +343,11 @@ export function parseLegacyReport(items: PdfTextItem[]): ParsedReportFields {
     result.devProcesses = selected;
   }
 
-  // --- 成果物: the bullet items found above, directly ---
-  if (deliverableBullets.length > 0) {
-    result.deliverables = deliverableBullets.map((it) => it.text.replace(/^[・]/, "").trim()).join("\n");
-  }
-
   // --- 困った点 / 良かった点: both are two-line labels whose paragraph content
   // is interleaved between the two label lines (e.g. line1, content1, line2,
   // content2). Build each band from the label pair's own y-span plus a small
   // margin, which keeps it tight enough not to bleed into neighboring
   // sections.
-  const troublesLabel1 = findLabelStartingWith(items, "今月の困った点");
-  const troublesLabel2 = findLabel(items, "対応・解決方法");
   const goodPointsLabel1 = findLabelStartingWith(items, "今月の良かった点");
   const goodPointsLabel2 = findLabel(items, "改善提案など");
 
@@ -369,8 +393,8 @@ export function parseLegacyReport(items: PdfTextItem[]): ParsedReportFields {
     const label = findLabel(items, text);
     if (!label) continue;
     const raw = valueRightOf(items, label, 180);
-    const match = RATING_OPTIONS.find((opt) => opt.label === raw);
-    if (match) (result as Record<string, unknown>)[key] = match.value;
+    const normalized = normalizeRatingLabel(raw);
+    if (normalized) (result as Record<string, unknown>)[key] = normalized;
   }
 
   // --- 作業配分: legend category names (percentages require manual entry) ---
