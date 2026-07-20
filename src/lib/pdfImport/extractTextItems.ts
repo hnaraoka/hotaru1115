@@ -12,6 +12,16 @@ export type PdfTextItem = {
  * Runs server-side only (Node.js runtime).
  */
 export async function extractTextItems(buffer: Buffer): Promise<PdfTextItem[]> {
+  // pdfjs-dist references `DOMMatrix` at module scope. It normally polyfills
+  // this via the optional `@napi-rs/canvas` native binding, but that binding
+  // isn't guaranteed to load on every serverless platform/arch (e.g. it fails
+  // silently on Vercel), which crashes the import outright. Provide a pure-JS
+  // fallback so text extraction never depends on a native binary succeeding.
+  if (!("DOMMatrix" in globalThis)) {
+    const { default: DOMMatrixPolyfill } = await import("@thednp/dommatrix");
+    (globalThis as unknown as { DOMMatrix: unknown }).DOMMatrix = DOMMatrixPolyfill;
+  }
+
   const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const data = new Uint8Array(buffer);
   const loadingTask = pdfjsLib.getDocument({ data, useSystemFonts: true });
