@@ -175,3 +175,4 @@ prisma/
   seed.ts                         初期管理者アカウント作成スクリプト
 vercel.json                       Vercel Cron の設定（毎月25日にリマインド送信）
 ```
+
