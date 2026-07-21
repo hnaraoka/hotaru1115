@@ -284,6 +284,11 @@ select {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  /* Grid items default to min-width: auto, so a child's intrinsic content
+     width (iOS renders input[type=date] with wider internal segments than
+     other inputs) can stretch this column past the row's own width instead
+     of shrinking to fit — forcing it to 0 lets width:100% below win. */
+  min-width: 0;
 }
 
 .field label {
@@ -357,6 +362,8 @@ select {
   /* iOSはinput[type=date]の内部コントロールに最小44ptの高さを強制するため、
      揃えないと同じ.form-row内の他の入力欄より背が高くなりズレて見える。 */
   min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .field input:focus,
