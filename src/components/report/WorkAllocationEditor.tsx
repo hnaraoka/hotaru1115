@@ -2,9 +2,19 @@
 
 import { WORK_ALLOCATION_SUGGESTIONS } from "@/lib/constants";
 
-export type WorkAllocationRow = { category: string; percentage: number };
+// percentage is kept as the raw input string (like every other numeric field
+// in the report form) rather than a number, so an emptied field is simply ""
+// instead of needing a NaN sentinel. NaN doesn't survive JSON.stringify (it
+// serializes to null), which used to turn a blank percentage into a null
+// sent to the API with no clear signal that the field was left empty.
+export type WorkAllocationRow = { category: string; percentage: string };
 
 const SUGGESTION_LIST_ID = "work-allocation-suggestions";
+
+function toFinitePercentage(value: string): number {
+  const n = Number(value);
+  return value.trim() !== "" && Number.isFinite(n) ? n : 0;
+}
 
 export function WorkAllocationEditor({
   rows,
@@ -13,7 +23,7 @@ export function WorkAllocationEditor({
   rows: WorkAllocationRow[];
   onChange: (rows: WorkAllocationRow[]) => void;
 }) {
-  const total = rows.reduce((sum, row) => sum + (Number.isFinite(row.percentage) ? row.percentage : 0), 0);
+  const total = rows.reduce((sum, row) => sum + toFinitePercentage(row.percentage), 0);
 
   function updateRow(index: number, patch: Partial<WorkAllocationRow>) {
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -24,7 +34,7 @@ export function WorkAllocationEditor({
   }
 
   function addRow() {
-    onChange([...rows, { category: "", percentage: 0 }]);
+    onChange([...rows, { category: "", percentage: "0" }]);
   }
 
   return (
@@ -47,16 +57,8 @@ export function WorkAllocationEditor({
               type="number"
               min={0}
               max={100}
-              value={Number.isNaN(row.percentage) ? "" : row.percentage}
-              onChange={(e) => {
-                const raw = e.target.value;
-                if (raw === "") {
-                  updateRow(i, { percentage: NaN });
-                  return;
-                }
-                const n = Number(raw);
-                if (!Number.isNaN(n)) updateRow(i, { percentage: n });
-              }}
+              value={row.percentage}
+              onChange={(e) => updateRow(i, { percentage: e.target.value })}
             />
             <span>%</span>
           </div>

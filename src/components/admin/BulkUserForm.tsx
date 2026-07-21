@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { parseCsv, toCsv } from "@/lib/csv";
+import { SimpleTable } from "@/components/SimpleTable";
 
 type PreviewRow = { loginId: string; name: string; role: "ADMIN" | "USER"; email: string | null };
 type ResultRow = PreviewRow & { success: boolean; initialPassword?: string; error?: string };
@@ -116,32 +117,21 @@ export function BulkUserForm() {
         <p>
           {results.length}件中 <strong>{successCount}件成功</strong> / {results.length - successCount}件失敗
         </p>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
-                <th style={{ padding: 6 }}>ログインID</th>
-                <th style={{ padding: 6 }}>氏名</th>
-                <th style={{ padding: 6 }}>権限</th>
-                <th style={{ padding: 6 }}>初期パスワード</th>
-                <th style={{ padding: 6 }}>結果</th>
-              </tr>
-            </thead>
-            <tbody>
-              {results.map((r, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: 6 }}>{r.loginId}</td>
-                  <td style={{ padding: 6 }}>{r.name}</td>
-                  <td style={{ padding: 6 }}>{ROLE_LABEL[r.role]}</td>
-                  <td style={{ padding: 6 }}>{r.success ? r.initialPassword : "-"}</td>
-                  <td style={{ padding: 6, color: r.success ? "#16a34a" : "var(--danger)" }}>
-                    {r.success ? "成功" : `失敗: ${r.error}`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SimpleTable
+          columns={["ログインID", "氏名", "権限", "初期パスワード", "結果"]}
+          rows={results.map((r, i) => ({
+            key: i,
+            cells: [
+              r.loginId,
+              r.name,
+              ROLE_LABEL[r.role],
+              r.success ? r.initialPassword : "-",
+              <span key="result" style={{ color: r.success ? "var(--success)" : "var(--danger)" }}>
+                {r.success ? "成功" : `失敗: ${r.error}`}
+              </span>,
+            ],
+          }))}
+        />
         <p className="hint">
           初期パスワードはこの画面を離れると再表示できません。CSVでダウンロードするか、各ユーザーへ安全な方法で伝達してください。
         </p>
@@ -193,28 +183,18 @@ export function BulkUserForm() {
 
       {preview.length > 0 && (
         <>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
-                  <th style={{ padding: 6 }}>ログインID</th>
-                  <th style={{ padding: 6 }}>氏名</th>
-                  <th style={{ padding: 6 }}>権限</th>
-                  <th style={{ padding: 6 }}>メールアドレス</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.map((row, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
-                    <td style={{ padding: 6 }}>{row.loginId || <em>未入力</em>}</td>
-                    <td style={{ padding: 6 }}>{row.name || <em>未入力</em>}</td>
-                    <td style={{ padding: 6 }}>{ROLE_LABEL[row.role]}</td>
-                    <td style={{ padding: 6 }}>{row.email ?? ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SimpleTable
+            columns={["ログインID", "氏名", "権限", "メールアドレス"]}
+            rows={preview.map((row, i) => ({
+              key: i,
+              cells: [
+                row.loginId || <em key="loginId">未入力</em>,
+                row.name || <em key="name">未入力</em>,
+                ROLE_LABEL[row.role],
+                row.email ?? "",
+              ],
+            }))}
+          />
           <div className="form-actions">
             <Link href="/admin/users" className="btn btn-secondary">
               キャンセル

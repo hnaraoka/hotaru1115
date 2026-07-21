@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserSession } from "@/lib/requireUser";
 import { reportInputSchema } from "@/lib/reportSchema";
 import { toReportCreateData } from "@/lib/reportData";
+import { isUniqueConstraintError } from "@/lib/prismaErrors";
 
 export async function GET() {
   const session = await requireUserSession();
@@ -42,13 +43,4 @@ export async function POST(request: NextRequest) {
     }
     throw error;
   }
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "P2002"
-  );
 }

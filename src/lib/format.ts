@@ -23,7 +23,7 @@ export function reviewStatusLabel(status: string): string {
 export function reviewStatusColor(status: string): string {
   switch (status) {
     case "APPROVED":
-      return "#16a34a";
+      return "var(--success)";
     case "NEEDS_REVISION":
       return "var(--danger)";
     default:
