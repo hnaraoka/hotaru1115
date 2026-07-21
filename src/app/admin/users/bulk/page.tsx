@@ -1,6 +1,11 @@
 import { BulkUserForm } from "@/components/admin/BulkUserForm";
+import { requireAdminPageSession } from "@/lib/requireAdminPage";
 
-export default function BulkUserPage() {
+export const dynamic = "force-dynamic";
+
+export default async function BulkUserPage() {
+  await requireAdminPageSession();
+
   return (
     <>
       <div className="page-heading">

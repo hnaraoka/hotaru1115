@@ -6,6 +6,7 @@ import { MarkExternalSubmissionButton } from "@/components/admin/MarkExternalSub
 import { CopyTextButton } from "@/components/admin/CopyTextButton";
 import { previousTargetMonthJst } from "@/lib/reminder";
 import { reviewStatusLabel, reviewStatusColor } from "@/lib/format";
+import { requireAdminPageSession } from "@/lib/requireAdminPage";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,8 @@ function yearOptions(centerYear: number): number[] {
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function AdminStatusPage({ searchParams }: Props) {
+  await requireAdminPageSession();
+
   const params = await searchParams;
   const defaultTarget = previousTargetMonthJst();
   const targetYear = parseIntParam(params.year, defaultTarget.year);
@@ -143,7 +146,7 @@ export default async function AdminStatusPage({ searchParams }: Props) {
                     <span style={{ display: "flex", gap: 6 }}>
                       <span
                         className="report-item-period"
-                        style={{ background: "color-mix(in srgb, #16a34a 14%, transparent)", color: "#16a34a" }}
+                        style={{ background: "color-mix(in srgb, var(--success) 14%, transparent)", color: "var(--success)" }}
                       >
                         提出済み
                       </span>
@@ -171,7 +174,7 @@ export default async function AdminStatusPage({ searchParams }: Props) {
                     {external ? (
                       <span
                         className="report-item-period"
-                        style={{ background: "color-mix(in srgb, #16a34a 14%, transparent)", color: "#16a34a" }}
+                        style={{ background: "color-mix(in srgb, var(--success) 14%, transparent)", color: "var(--success)" }}
                       >
                         確認済み（外部提出）
                       </span>

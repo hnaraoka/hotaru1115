@@ -7,6 +7,9 @@
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --danger: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+  --warning-text: #92400e;
   --radius: 10px;
 }
 
@@ -19,6 +22,9 @@
     --border: #2a2e37;
     --primary: #3b82f6;
     --primary-hover: #60a5fa;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --warning-text: #fbbf24;
   }
 
   html {
@@ -479,7 +485,7 @@ select {
 }
 
 .carry-over-done {
-  color: #16a34a;
+  color: var(--success);
   font-weight: 600;
   font-size: 12px;
 }
@@ -499,8 +505,8 @@ select {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  background: color-mix(in srgb, #d97706 10%, transparent);
-  border: 1px solid color-mix(in srgb, #d97706 40%, transparent);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
   color: var(--foreground);
   padding: 10px 14px;
   border-radius: 8px;
@@ -665,7 +671,7 @@ select {
 }
 
 .work-allocation-total.ok {
-  color: #16a34a;
+  color: var(--success);
 }
 
 .work-allocation-total.warn {

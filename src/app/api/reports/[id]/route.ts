@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUserSession } from "@/lib/requireUser";
 import { reportInputSchema } from "@/lib/reportSchema";
 import { toReportUpdateData } from "@/lib/reportData";
+import { isUniqueConstraintError } from "@/lib/prismaErrors";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -85,13 +86,4 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   await prisma.report.delete({ where: { id } });
   return NextResponse.json({ ok: true });
-}
-
-function isUniqueConstraintError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "P2002"
-  );
 }

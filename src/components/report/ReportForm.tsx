@@ -4,66 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Report, TechStackItem, WorkAllocation } from "@prisma/client";
 import { reportInputSchema, type ReportInput } from "@/lib/reportSchema";
-import { MONTH_OPTIONS, RATING_FIELDS, RATING_OPTIONS, TECH_CATEGORY_OPTIONS } from "@/lib/constants";
-import type { TechCategoryValue } from "@/lib/constants";
-import { TagInput } from "@/components/report/TagInput";
-import { DevProcessCheckboxes } from "@/components/report/DevProcessCheckboxes";
-import { WorkAllocationEditor, type WorkAllocationRow } from "@/components/report/WorkAllocationEditor";
+import { emptyTechStack, techStackItemsToRecord, techStackRecordToItems } from "@/lib/techStack";
 import type { ParsedReportFields } from "@/lib/pdfImport/parseLegacyReport";
+import type { FormState, ReferenceFields } from "@/components/report/reportFormTypes";
+import { WorkAllocationEditor } from "@/components/report/WorkAllocationEditor";
+import { ImportAndCarryOverBanner } from "@/components/report/sections/ImportAndCarryOverBanner";
+import { BasicInfoSection } from "@/components/report/sections/BasicInfoSection";
+import { ClientWorkSection } from "@/components/report/sections/ClientWorkSection";
+import { TechStackSection } from "@/components/report/sections/TechStackSection";
+import { ProjectSection } from "@/components/report/sections/ProjectSection";
+import { OutcomeSection } from "@/components/report/sections/OutcomeSection";
+import { SelfRatingSection } from "@/components/report/sections/SelfRatingSection";
+import { FieldErrorText } from "@/components/report/FormFieldHelpers";
 
 type ReportWithRelations = Report & { techStackItems: TechStackItem[]; workAllocations: WorkAllocation[] };
-
-type ReferenceFields = {
-  workContent?: string;
-  deliverables?: string;
-  troubles?: string;
-  goodPoints?: string;
-};
-
-type FormState = {
-  submittedAt: string;
-  targetYear: number;
-  targetMonth: number;
-  gender: string;
-  age: string;
-  experienceYears: string;
-  clientCompany: string;
-  workLocation: string;
-  workDays: string;
-  workHours: string;
-  teleworkDays: string;
-  onsiteDays: string;
-  projectName: string;
-  projectPeriodStartYear: string;
-  projectPeriodStartMonth: string;
-  projectPeriodOngoing: boolean;
-  projectPeriodEndYear: string;
-  projectPeriodEndMonth: string;
-  projectPeriodMonths: string;
-  workContent: string;
-  devProcesses: string[];
-  deliverables: string;
-  troubles: string;
-  goodPoints: string;
-  condition: string;
-  motivation: string;
-  workload: string;
-  difficulty: string;
-  teamConsultability: string;
-  growth: string;
-  techStack: Record<TechCategoryValue, string[]>;
-  workAllocations: WorkAllocationRow[];
-};
-
-function emptyTechStack(): Record<TechCategoryValue, string[]> {
-  return {
-    LANGUAGE: [],
-    FRAMEWORK: [],
-    DATABASE: [],
-    TOOL: [],
-    OS_ENV: [],
-  };
-}
 
 function todayISODate() {
   return new Date().toISOString().slice(0, 10);
@@ -108,11 +62,6 @@ function buildInitialState(report?: ReportWithRelations): FormState {
     };
   }
 
-  const techStack = emptyTechStack();
-  for (const item of report.techStackItems) {
-    techStack[item.category as TechCategoryValue]?.push(item.name);
-  }
-
   return {
     submittedAt: new Date(report.submittedAt).toISOString().slice(0, 10),
     targetYear: report.targetYear,
@@ -144,10 +93,10 @@ function buildInitialState(report?: ReportWithRelations): FormState {
     difficulty: report.difficulty ?? "",
     teamConsultability: report.teamConsultability ?? "",
     growth: report.growth ?? "",
-    techStack,
+    techStack: techStackItemsToRecord(report.techStackItems),
     workAllocations: report.workAllocations
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((w) => ({ category: w.category, percentage: w.percentage })),
+      .map((w) => ({ category: w.category, percentage: String(w.percentage) })),
   };
 }
 
@@ -183,10 +132,6 @@ function computeProjectPeriodMonths(
 }
 
 function buildPayload(state: FormState): unknown {
-  const techStackItems = TECH_CATEGORY_OPTIONS.flatMap(({ value }) =>
-    state.techStack[value].map((name) => ({ category: value, name })),
-  );
-
   return {
     submittedAt: state.submittedAt,
     targetYear: state.targetYear,
@@ -225,39 +170,11 @@ function buildPayload(state: FormState): unknown {
     difficulty: state.difficulty,
     teamConsultability: state.teamConsultability,
     growth: state.growth,
-    techStackItems,
+    techStackItems: techStackRecordToItems(state.techStack),
     workAllocations: state.workAllocations
       .filter((row) => row.category.trim() !== "")
-      .map((row) => ({ category: row.category.trim(), percentage: row.percentage })),
+      .map((row) => ({ category: row.category.trim(), percentage: toNullableInt(row.percentage) ?? 0 })),
   };
-}
-
-function FieldErrorText({ messages }: { messages: string[] }) {
-  if (messages.length === 0) return null;
-  return <span className="field-error-text">{messages.join(" / ")}</span>;
-}
-
-function ReferenceField({
-  label,
-  value,
-  onCopy,
-}: {
-  label: string;
-  value: string | undefined;
-  onCopy: () => void;
-}) {
-  if (!value) return null;
-  return (
-    <details className="reference-panel">
-      <summary>{label}を見る（参考）</summary>
-      <div className="reference-panel-body">
-        <pre className="reference-panel-text">{value}</pre>
-        <button type="button" className="btn btn-secondary" onClick={onCopy}>
-          この内容をコピー
-        </button>
-      </div>
-    </details>
-  );
 }
 
 export function ReportForm({ report }: { report?: ReportWithRelations }) {
@@ -345,10 +262,6 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
 
   function applyCarryOver() {
     if (!latestReport) return;
-    const techStack = emptyTechStack();
-    for (const item of latestReport.techStackItems) {
-      techStack[item.category as TechCategoryValue]?.push(item.name);
-    }
     setState((prev) => ({
       ...prev,
       gender: latestReport.gender ?? prev.gender,
@@ -362,7 +275,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       projectPeriodStartMonth: latestReport.projectPeriodStartMonth?.toString() ?? "",
       projectPeriodOngoing: latestReport.projectPeriodOngoing,
       devProcesses: latestReport.devProcesses,
-      techStack,
+      techStack: techStackItemsToRecord(latestReport.techStackItems),
       condition: latestReport.condition ?? prev.condition,
       motivation: latestReport.motivation ?? prev.motivation,
       workload: latestReport.workload ?? prev.workload,
@@ -372,7 +285,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       workAllocations: latestReport.workAllocations
         .slice()
         .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((w) => ({ category: w.category, percentage: w.percentage })),
+        .map((w) => ({ category: w.category, percentage: String(w.percentage) })),
     }));
     // 作業内容・成果物・困った点・良かった点は自動入力せず、参考表示のみに回す
     // （月ごとに書き直す前提の項目のため）。
@@ -445,7 +358,12 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       if (parsed.teamConsultability !== undefined) next.teamConsultability = parsed.teamConsultability;
       if (parsed.growth !== undefined) next.growth = parsed.growth;
       if (parsed.techStack !== undefined) next.techStack = parsed.techStack;
-      if (parsed.workAllocations !== undefined) next.workAllocations = parsed.workAllocations;
+      if (parsed.workAllocations !== undefined) {
+        next.workAllocations = parsed.workAllocations.map((w) => ({
+          category: w.category,
+          percentage: String(w.percentage),
+        }));
+      }
       return next;
     });
     // 作業内容・成果物・困った点・良かった点は自動入力せず、参考表示のみに回す。
@@ -519,6 +437,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
   }
 
   const hasValidationErrors = Object.keys(fieldErrors).length > 0 || formErrors.length > 0;
+  const sectionProps = { state, update, fieldClass, errorsFor };
 
   return (
     <form className="form" onSubmit={handleSubmit}>
@@ -538,417 +457,36 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
         </div>
       )}
 
-      {!isEdit && latestReport && (
-        <div className="carry-over-banner">
-          <span>
-            前回（{latestReport.targetYear}年{latestReport.targetMonth}月分）のデータがあります。
-          </span>
-          <button type="button" className="btn btn-secondary" onClick={applyCarryOver}>
-            前回のデータを引き継ぐ
-          </button>
-          {carriedOver && <span className="carry-over-done">引き継ぎました</span>}
-        </div>
-      )}
-      {!isEdit && latestChecked && !latestReport && (
-        <div className="carry-over-banner">
-          <span>引き継げる過去の報告書はありません（今回が初回作成です）。</span>
-        </div>
-      )}
-
       {!isEdit && (
-        <div className="carry-over-banner">
-          <span style={{ flexBasis: "100%" }}>
-            過去に作成した月次報告書のPDFまたはExcelファイルがあれば、読み込んでフォームに自動入力できます。
-          </span>
-          <label className="btn btn-secondary" style={{ cursor: "pointer" }}>
-            {importing ? "読み込み中..." : "PDFから読み込む"}
-            <input
-              type="file"
-              accept="application/pdf"
-              style={{ display: "none" }}
-              disabled={importing}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (file) handleImportPdf(file);
-              }}
-            />
-          </label>
-          <label className="btn btn-secondary" style={{ cursor: "pointer" }}>
-            {importing ? "読み込み中..." : "Excelから読み込む"}
-            <input
-              type="file"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              style={{ display: "none" }}
-              disabled={importing}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = "";
-                if (file) handleImportExcel(file);
-              }}
-            />
-          </label>
-          {imported && !importError && <span className="carry-over-done">読み込みました</span>}
-        </div>
-      )}
-      {importError && <div className="error-banner">{importError}</div>}
-      {importWarnings.length > 0 && (
-        <div className="error-banner" style={{ color: "#92400e", background: "#fef3c7", borderColor: "#fbbf24" }}>
-          <ul style={{ paddingLeft: 18 }}>
-            {importWarnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-          <div>読み込んだ内容は必ずご確認・修正のうえ保存してください。</div>
-        </div>
+        <ImportAndCarryOverBanner
+          latestReport={latestReport}
+          latestChecked={latestChecked}
+          carriedOver={carriedOver}
+          onApplyCarryOver={applyCarryOver}
+          importing={importing}
+          imported={imported}
+          importError={importError}
+          importWarnings={importWarnings}
+          onImportPdf={handleImportPdf}
+          onImportExcel={handleImportExcel}
+        />
       )}
 
-      <div className="section-title" style={{ borderTop: "none", paddingTop: 0 }}>
-        基本情報
-      </div>
-      <div className="form-row">
-        <div className={fieldClass("submittedAt")}>
-          <label htmlFor="submittedAt">提出日 *</label>
-          <input
-            id="submittedAt"
-            type="date"
-            value={state.submittedAt}
-            onChange={(e) => update("submittedAt", e.target.value)}
-            required
-          />
-          <FieldErrorText messages={errorsFor("submittedAt")} />
-        </div>
-        <div className={fieldClass("targetYear")}>
-          <label htmlFor="targetYear">対象年 *</label>
-          <input
-            id="targetYear"
-            type="number"
-            value={state.targetYear}
-            onChange={(e) => update("targetYear", Number(e.target.value))}
-            required
-          />
-          <FieldErrorText messages={errorsFor("targetYear")} />
-        </div>
-        <div className={fieldClass("targetMonth")}>
-          <label htmlFor="targetMonth">対象月 *</label>
-          <select
-            id="targetMonth"
-            value={state.targetMonth}
-            onChange={(e) => update("targetMonth", Number(e.target.value))}
-            required
-          >
-            {MONTH_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                {m}月
-              </option>
-            ))}
-          </select>
-          <FieldErrorText messages={errorsFor("targetMonth")} />
-        </div>
-      </div>
-
-      <div className="form-row">
-        <div className={fieldClass("gender")}>
-          <label htmlFor="gender">性別</label>
-          <select id="gender" value={state.gender} onChange={(e) => update("gender", e.target.value)}>
-            <option value="">選択してください</option>
-            <option value="男性">男性</option>
-            <option value="女性">女性</option>
-          </select>
-          <FieldErrorText messages={errorsFor("gender")} />
-        </div>
-        <div className={fieldClass("age")}>
-          <label htmlFor="age">年齢</label>
-          <input id="age" type="number" value={state.age} onChange={(e) => update("age", e.target.value)} />
-          <FieldErrorText messages={errorsFor("age")} />
-        </div>
-        <div className={fieldClass("experienceYears")}>
-          <label htmlFor="experienceYears">経験年数</label>
-          <input
-            id="experienceYears"
-            type="number"
-            value={state.experienceYears}
-            onChange={(e) => update("experienceYears", e.target.value)}
-          />
-          <FieldErrorText messages={errorsFor("experienceYears")} />
-        </div>
-      </div>
-
-      <div className="section-title">参画先・勤務</div>
-      <div className="form-row">
-        <div className={fieldClass("clientCompany")}>
-          <label htmlFor="clientCompany">参画先企業 *</label>
-          <input
-            id="clientCompany"
-            value={state.clientCompany}
-            onChange={(e) => update("clientCompany", e.target.value)}
-            required
-            maxLength={200}
-          />
-          <FieldErrorText messages={errorsFor("clientCompany")} />
-        </div>
-        <div className={fieldClass("workLocation")}>
-          <label htmlFor="workLocation">作業場所 *</label>
-          <input
-            id="workLocation"
-            value={state.workLocation}
-            onChange={(e) => update("workLocation", e.target.value)}
-            required
-            maxLength={200}
-          />
-          <FieldErrorText messages={errorsFor("workLocation")} />
-        </div>
-      </div>
-
-      <div className="form-row">
-        <div className={fieldClass("workDays")}>
-          <label htmlFor="workDays">月間実労働日数 *</label>
-          <input
-            id="workDays"
-            type="number"
-            value={state.workDays}
-            onChange={(e) => update("workDays", e.target.value)}
-            required
-          />
-          <FieldErrorText messages={errorsFor("workDays")} />
-        </div>
-        <div className={fieldClass("workHours")}>
-          <label htmlFor="workHours">月間実労働時間 *</label>
-          <input
-            id="workHours"
-            type="number"
-            step="0.5"
-            value={state.workHours}
-            onChange={(e) => update("workHours", e.target.value)}
-            required
-          />
-          <FieldErrorText messages={errorsFor("workHours")} />
-        </div>
-        <div className={fieldClass("teleworkDays")}>
-          <label htmlFor="teleworkDays">テレワーク日数 *</label>
-          <input
-            id="teleworkDays"
-            type="number"
-            value={state.teleworkDays}
-            onChange={(e) => update("teleworkDays", e.target.value)}
-            required
-          />
-          <FieldErrorText messages={errorsFor("teleworkDays")} />
-        </div>
-        <div className={fieldClass("onsiteDays")}>
-          <label htmlFor="onsiteDays">現場日数 *</label>
-          <input
-            id="onsiteDays"
-            type="number"
-            value={state.onsiteDays}
-            onChange={(e) => update("onsiteDays", e.target.value)}
-            required
-          />
-          <FieldErrorText messages={errorsFor("onsiteDays")} />
-        </div>
-      </div>
-
-      <div className="section-title">技術スタック</div>
-      {errorsFor("techStackItems").length > 0 && (
-        <div className="field has-error" style={{ gap: 0 }}>
-          <FieldErrorText messages={errorsFor("techStackItems")} />
-        </div>
-      )}
-      <div className="form-row">
-        {TECH_CATEGORY_OPTIONS.map(({ value, label }) => (
-          <TagInput
-            key={value}
-            label={label}
-            values={state.techStack[value]}
-            onChange={(values) => update("techStack", { ...state.techStack, [value]: values })}
-          />
-        ))}
-      </div>
-
-      <div className="section-title">プロジェクト</div>
-      <div className={fieldClass("projectName")}>
-        <label htmlFor="projectName">プロジェクト名 *</label>
-        <input
-          id="projectName"
-          value={state.projectName}
-          onChange={(e) => update("projectName", e.target.value)}
-          required
-          maxLength={200}
-        />
-        <FieldErrorText messages={errorsFor("projectName")} />
-      </div>
-
-      <div className="form-row">
-        <div className={fieldClass("projectPeriodStartYear", "projectPeriodStartMonth")}>
-          <label>プロジェクト参画年月</label>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              type="number"
-              placeholder="年"
-              value={state.projectPeriodStartYear}
-              onChange={(e) => update("projectPeriodStartYear", e.target.value)}
-            />
-            <input
-              type="number"
-              placeholder="月"
-              value={state.projectPeriodStartMonth}
-              onChange={(e) => update("projectPeriodStartMonth", e.target.value)}
-            />
-          </div>
-          <FieldErrorText messages={errorsFor("projectPeriodStartYear", "projectPeriodStartMonth")} />
-        </div>
-        <div className={fieldClass("projectPeriodOngoing")}>
-          <label htmlFor="projectPeriodOngoing">状況</label>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, height: 42 }}>
-            <input
-              id="projectPeriodOngoing"
-              type="checkbox"
-              style={{ width: "auto" }}
-              checked={state.projectPeriodOngoing}
-              onChange={(e) => update("projectPeriodOngoing", e.target.checked)}
-            />
-            <label htmlFor="projectPeriodOngoing" style={{ marginBottom: 0 }}>
-              現在も継続中
-            </label>
-          </div>
-        </div>
-        {!state.projectPeriodOngoing && (
-          <div className={fieldClass("projectPeriodEndYear", "projectPeriodEndMonth")}>
-            <label>期間終了</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                type="number"
-                placeholder="年"
-                value={state.projectPeriodEndYear}
-                onChange={(e) => update("projectPeriodEndYear", e.target.value)}
-              />
-              <input
-                type="number"
-                placeholder="月"
-                value={state.projectPeriodEndMonth}
-                onChange={(e) => update("projectPeriodEndMonth", e.target.value)}
-              />
-            </div>
-            <FieldErrorText messages={errorsFor("projectPeriodEndYear", "projectPeriodEndMonth")} />
-          </div>
-        )}
-        <div className="field">
-          <label htmlFor="projectPeriodMonths">期間(ヶ月数)</label>
-          <input id="projectPeriodMonths" type="number" value={computedPeriodMonths} disabled />
-          <span className="hint">プロジェクト参画年月と対象年/対象月から自動計算されます</span>
-        </div>
-      </div>
-
-      <div className={fieldClass("workContent")}>
-        <label htmlFor="workContent">作業内容 *</label>
-        <textarea
-          id="workContent"
-          value={state.workContent}
-          onChange={(e) => update("workContent", e.target.value)}
-          required
-          placeholder="箇条書きで入力してください"
-          style={{ minHeight: 120 }}
-          maxLength={2000}
-        />
-        <span className="hint">{state.workContent.length} / 2000文字</span>
-        <FieldErrorText messages={errorsFor("workContent")} />
-        <ReferenceField
-          label="前回の作業内容"
-          value={referenceContent.workContent}
-          onCopy={() => copyReference("workContent", referenceContent.workContent!)}
-        />
-      </div>
-
-      <div className={fieldClass("devProcesses")}>
-        <label>開発工程 *</label>
-        <DevProcessCheckboxes
-          selected={state.devProcesses}
-          onChange={(v) => update("devProcesses", v)}
-        />
-        <FieldErrorText messages={errorsFor("devProcesses")} />
-      </div>
-
-      <div className="section-title">成果物・所感</div>
-      <div className={fieldClass("deliverables")}>
-        <label htmlFor="deliverables">成果物</label>
-        <textarea
-          id="deliverables"
-          value={state.deliverables}
-          onChange={(e) => update("deliverables", e.target.value)}
-          maxLength={1000}
-        />
-        <span className="hint">{state.deliverables.length} / 1000文字</span>
-        <FieldErrorText messages={errorsFor("deliverables")} />
-        <ReferenceField
-          label="前回の成果物"
-          value={referenceContent.deliverables}
-          onCopy={() => copyReference("deliverables", referenceContent.deliverables!)}
-        />
-      </div>
-      <div className={fieldClass("troubles")}>
-        <label htmlFor="troubles">今月の困った点と対応・解決方法</label>
-        <textarea
-          id="troubles"
-          value={state.troubles}
-          onChange={(e) => update("troubles", e.target.value)}
-          maxLength={1000}
-        />
-        <span className="hint">{state.troubles.length} / 1000文字</span>
-        <FieldErrorText messages={errorsFor("troubles")} />
-        <ReferenceField
-          label="前回の困った点・対応方法"
-          value={referenceContent.troubles}
-          onCopy={() => copyReference("troubles", referenceContent.troubles!)}
-        />
-      </div>
-      <div className={fieldClass("goodPoints")}>
-        <label htmlFor="goodPoints">今月の良かった点/改善提案など</label>
-        <textarea
-          id="goodPoints"
-          value={state.goodPoints}
-          onChange={(e) => update("goodPoints", e.target.value)}
-          maxLength={1000}
-        />
-        <span className="hint">{state.goodPoints.length} / 1000文字</span>
-        <FieldErrorText messages={errorsFor("goodPoints")} />
-        <ReferenceField
-          label="前回の良かった点・改善提案"
-          value={referenceContent.goodPoints}
-          onCopy={() => copyReference("goodPoints", referenceContent.goodPoints!)}
-        />
-      </div>
-
-      <div className="section-title">自己評価</div>
-      <div className="form-row">
-        {RATING_FIELDS.map(({ key, label }) => (
-          <div className={fieldClass(key)} key={key}>
-            <label htmlFor={key}>{label} *</label>
-            <select
-              id={key}
-              value={state[key]}
-              onChange={(e) => update(key, e.target.value)}
-              required
-            >
-              <option value="" disabled>
-                選択してください
-              </option>
-              {RATING_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <FieldErrorText messages={errorsFor(key)} />
-          </div>
-        ))}
-      </div>
+      <BasicInfoSection {...sectionProps} />
+      <ClientWorkSection {...sectionProps} />
+      <TechStackSection {...sectionProps} />
+      <ProjectSection
+        {...sectionProps}
+        computedPeriodMonths={computedPeriodMonths}
+        workContentReference={referenceContent.workContent}
+        onCopyWorkContentReference={() => copyReference("workContent", referenceContent.workContent!)}
+      />
+      <OutcomeSection {...sectionProps} referenceContent={referenceContent} onCopyReference={copyReference} />
+      <SelfRatingSection {...sectionProps} />
 
       <div className="section-title">作業配分</div>
       <div className={fieldClass("workAllocations")} style={{ gap: 10 }}>
-        <WorkAllocationEditor
-          rows={state.workAllocations}
-          onChange={(rows) => update("workAllocations", rows)}
-        />
+        <WorkAllocationEditor rows={state.workAllocations} onChange={(rows) => update("workAllocations", rows)} />
         <FieldErrorText messages={errorsFor("workAllocations")} />
       </div>
 

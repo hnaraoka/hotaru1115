@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requireAdminPageSession } from "@/lib/requireAdminPage";
 
 export const dynamic = "force-dynamic";
 
 const ROLE_LABEL: Record<string, string> = { ADMIN: "管理者", USER: "一般" };
 
 export default async function AdminUsersPage() {
+  await requireAdminPageSession();
+
   const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
 
   return (

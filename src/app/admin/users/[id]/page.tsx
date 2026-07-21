@@ -2,12 +2,15 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { EditUserForm } from "@/components/admin/EditUserForm";
 import { DeleteUserButton } from "@/components/admin/DeleteUserButton";
+import { requireAdminPageSession } from "@/lib/requireAdminPage";
 
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function EditUserPage({ params }: Props) {
+  await requireAdminPageSession();
+
   const { id } = await params;
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) notFound();

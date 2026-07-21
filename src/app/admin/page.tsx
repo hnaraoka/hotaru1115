@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { NotificationList } from "@/components/admin/NotificationList";
+import { requireAdminPageSession } from "@/lib/requireAdminPage";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
+  await requireAdminPageSession();
+
   const notifications = await prisma.notification.findMany({
     orderBy: { createdAt: "desc" },
     take: 20,

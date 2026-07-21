@@ -1,8 +1,12 @@
 import { NewUserForm } from "@/components/admin/NewUserForm";
+import { requireAdminPageSession } from "@/lib/requireAdminPage";
 
 export const metadata = { title: "ユーザー追加 | 管理者設定" };
+export const dynamic = "force-dynamic";
 
-export default function NewUserPage() {
+export default async function NewUserPage() {
+  await requireAdminPageSession();
+
   return (
     <>
       <div className="page-heading">
