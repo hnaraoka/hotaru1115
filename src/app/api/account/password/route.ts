@@ -29,7 +29,7 @@ export async function PATCH(request: NextRequest) {
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { passwordHash: await hashPassword(newPassword), failedLoginCount: 0 },
+    data: { passwordHash: await hashPassword(newPassword), passwordChangedAt: new Date(), failedLoginCount: 0 },
   });
 
   return NextResponse.json({ success: true });

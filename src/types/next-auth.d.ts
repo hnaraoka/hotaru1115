@@ -23,5 +23,7 @@ declare module "next-auth/jwt" {
     role: "ADMIN" | "USER";
     /** Epoch ms of the last time this token's account was confirmed active. */
     activeCheckedAt: number;
+    /** Epoch ms when this session was originally issued (set once, at login). */
+    authenticatedAt: number;
   }
 }
