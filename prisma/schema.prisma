@@ -105,7 +105,6 @@ model Report {
   workAllocations WorkAllocation[]
 
   @@unique([userId, targetYear, targetMonth])
-  @@index([userId, targetYear, targetMonth])
 }
 
 model TechStackItem {

@@ -38,5 +38,8 @@
     "playwright": "^1.61.1",
     "tsx": "^4.23.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }
