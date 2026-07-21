@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { MONTH_OPTIONS } from "@/lib/constants";
 import { SendRemindersButton } from "@/components/admin/SendRemindersButton";
 import { MarkExternalSubmissionButton } from "@/components/admin/MarkExternalSubmissionButton";
+import { CopyTextButton } from "@/components/admin/CopyTextButton";
 import { previousTargetMonthJst } from "@/lib/reminder";
 import { reviewStatusLabel, reviewStatusColor } from "@/lib/format";
 
@@ -46,6 +47,13 @@ export default async function AdminStatusPage({ searchParams }: Props) {
   const reportByUserId = new Map(reports.map((r) => [r.userId, r]));
   const externalByUserId = new Map(externalSubmissions.map((e) => [e.userId, e]));
   const submittedCount = users.filter((u) => reportByUserId.has(u.id) || externalByUserId.has(u.id)).length;
+  const unsubmittedUsers = users.filter((u) => !reportByUserId.has(u.id) && !externalByUserId.has(u.id));
+  const reminderText =
+    unsubmittedUsers.length > 0
+      ? `【月次報告書】${targetYear}年${targetMonth}月分の提出リマインドです。\n以下の方はまだ提出が確認できていません。お手数ですが確認・提出をお願いします。\n\n${unsubmittedUsers
+          .map((u) => `・${u.name}`)
+          .join("\n")}`
+      : "";
 
   const prevMonth = targetMonth === 1 ? { year: targetYear - 1, month: 12 } : { year: targetYear, month: targetMonth - 1 };
   const nextMonth = targetMonth === 12 ? { year: targetYear + 1, month: 1 } : { year: targetYear, month: targetMonth + 1 };
@@ -110,11 +118,16 @@ export default async function AdminStatusPage({ searchParams }: Props) {
             {users.length}人中 <strong>{submittedCount}人提出済み</strong>（{users.length - submittedCount}人未提出）
           </p>
         </div>
-        <SendRemindersButton
-          year={targetYear}
-          month={targetMonth}
-          unsubmittedCount={users.length - submittedCount}
-        />
+        <div style={{ display: "flex", gap: 8 }}>
+          {unsubmittedUsers.length > 0 && (
+            <CopyTextButton text={reminderText} label="LINE WORKS用の文面をコピー" />
+          )}
+          <SendRemindersButton
+            year={targetYear}
+            month={targetMonth}
+            unsubmittedCount={users.length - submittedCount}
+          />
+        </div>
       </div>
 
       <ul className="report-list">

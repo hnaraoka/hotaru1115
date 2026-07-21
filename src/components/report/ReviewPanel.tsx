@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { reviewStatusLabel } from "@/lib/format";
+import { CopyTextButton } from "@/components/admin/CopyTextButton";
 
 export function ReviewPanel({
   reportId,
@@ -11,6 +12,9 @@ export function ReviewPanel({
   reviewedAt,
   reviewedByName,
   flags,
+  userName,
+  targetYear,
+  targetMonth,
 }: {
   reportId: string;
   initialStatus: string;
@@ -18,6 +22,9 @@ export function ReviewPanel({
   reviewedAt: string | null;
   reviewedByName: string | null;
   flags: string[];
+  userName: string;
+  targetYear: number;
+  targetMonth: number;
 }) {
   const router = useRouter();
   const [comment, setComment] = useState(initialComment ?? "");
@@ -57,6 +64,15 @@ export function ReviewPanel({
           `（${reviewedByName} / ${new Date(reviewedAt).toLocaleString("ja-JP")}）`}
       </p>
 
+      {initialStatus === "NEEDS_REVISION" && (
+        <div style={{ margin: "8px 0" }}>
+          <CopyTextButton
+            label="LINE WORKS用の文面をコピー"
+            text={`${userName}さん\n${targetYear}年${targetMonth}月分の月次報告書について、指摘があります。\n\n${initialComment ?? ""}\n\nアプリで確認のうえ、修正して再度保存してください。`}
+          />
+        </div>
+      )}
+
       {flags.length > 0 && (
         <div className="reminder-banner" style={{ flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
           <strong style={{ fontSize: 13 }}>自動チェック（{flags.length}件、参考情報です）</strong>
@@ -69,7 +85,9 @@ export function ReviewPanel({
       )}
 
       <div className="field" style={{ marginTop: 12 }}>
-        <label htmlFor="reviewComment">指摘内容（差し戻す場合は必須。本人にメールで送信されます）</label>
+        <label htmlFor="reviewComment">
+          指摘内容（差し戻す場合は必須。メール設定済みなら本人に通知されます。保存後、下にLINE WORKS用の文面コピー用ボタンが表示されます）
+        </label>
         <textarea
           id="reviewComment"
           value={comment}

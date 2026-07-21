@@ -19,7 +19,7 @@ export default async function ReportDetailPage({ params }: Props) {
   const { id } = await params;
   const report = await prisma.report.findUnique({
     where: { id },
-    include: { techStackItems: true, workAllocations: true },
+    include: { techStackItems: true, workAllocations: true, user: { select: { name: true } } },
   });
 
   if (!report) notFound();
@@ -241,6 +241,9 @@ export default async function ReportDetailPage({ params }: Props) {
           reviewedAt={report.reviewedAt ? report.reviewedAt.toISOString() : null}
           reviewedByName={report.reviewedByName}
           flags={computeReviewFlags(report)}
+          userName={report.user.name}
+          targetYear={report.targetYear}
+          targetMonth={report.targetMonth}
         />
       )}
     </>

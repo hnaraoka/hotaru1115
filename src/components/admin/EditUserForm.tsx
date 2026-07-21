@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CopyTextButton } from "@/components/admin/CopyTextButton";
 
 type UserData = {
   id: string;
@@ -12,7 +13,7 @@ type UserData = {
   isActive: boolean;
 };
 
-export function EditUserForm({ user }: { user: UserData }) {
+export function EditUserForm({ user, emailConfigured }: { user: UserData; emailConfigured: boolean }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -97,11 +98,15 @@ export function EditUserForm({ user }: { user: UserData }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {resetPasswordResult && (
-        <div className="detail-meta">
+        <div className="detail-meta" style={{ flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
           <div className="detail-meta-item">
             <div className="label">新しい初期パスワード（今だけ表示）</div>
             <div className="value">{resetPasswordResult}</div>
           </div>
+          <CopyTextButton
+            label="LINE WORKS用の文面をコピー"
+            text={`${user.name}さん\nログインパスワードを再発行しました。\n\nログインID: ${user.loginId}\n新しいパスワード: ${resetPasswordResult}\n\n次回ログイン後、必要であれば変更してください。`}
+          />
         </div>
       )}
 
@@ -146,9 +151,9 @@ export function EditUserForm({ user }: { user: UserData }) {
         <div className="section-title">パスワードを変更する</div>
         <p className="hint" style={{ margin: 0 }}>
           自分でパスワードを指定したい場合は入力してください。空欄のままなら変更されません。
-          {user.email
+          {emailConfigured && user.email
             ? "このユーザーにはメールアドレスが登録されているため、変更後のパスワードは自動的にメールでも通知されます。"
-            : "メールアドレスが未登録のため、変更後は口頭などで直接お伝えください。"}
+            : "メール通知は設定されていないため、変更後はLINE WORKSなどで直接お伝えください（保存後にコピー用ボタンが表示されます）。"}
         </p>
         <div className="form-row">
           <div className="field">

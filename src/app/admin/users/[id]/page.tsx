@@ -29,6 +29,7 @@ export default async function EditUserPage({ params }: Props) {
           email: user.email,
           isActive: user.isActive,
         }}
+        emailConfigured={!!process.env.RESEND_API_KEY}
       />
 
       {user.role === "USER" && (
