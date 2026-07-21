@@ -354,6 +354,9 @@ select {
   background: var(--background);
   font-size: 14px;
   width: 100%;
+  /* iOSはinput[type=date]の内部コントロールに最小44ptの高さを強制するため、
+     揃えないと同じ.form-row内の他の入力欄より背が高くなりズレて見える。 */
+  min-height: 44px;
 }
 
 .field input:focus,
