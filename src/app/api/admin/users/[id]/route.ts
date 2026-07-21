@@ -19,6 +19,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     email?: string | null;
     isActive?: boolean;
     passwordHash?: string;
+    passwordChangedAt?: Date;
     failedLoginCount?: number;
   } = {};
 
@@ -35,11 +36,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "パスワードは8文字以上で入力してください" }, { status: 400 });
     }
     data.passwordHash = await hashPassword(password);
+    data.passwordChangedAt = new Date();
     data.failedLoginCount = 0;
     plainPasswordForEmail = password;
   } else if (body.resetPassword === true) {
     newPassword = generateInitialPassword();
     data.passwordHash = await hashPassword(newPassword);
+    data.passwordChangedAt = new Date();
     data.failedLoginCount = 0;
     plainPasswordForEmail = newPassword;
   }

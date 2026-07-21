@@ -35,30 +35,31 @@ enum ReviewStatus {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  loginId          String    @unique
-  passwordHash     String
-  name             String
-  role             Role      @default(USER)
-  email            String?
-  isActive         Boolean   @default(true)
-  failedLoginCount Int       @default(0)
-  lastFailedAt     DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  loginId           String    @unique
+  passwordHash      String
+  passwordChangedAt DateTime  @default(now()) // パスワード変更/再発行時刻より前に発行されたセッションを無効化するために使用
+  name              String
+  role              Role      @default(USER)
+  email             String?
+  isActive          Boolean   @default(true)
+  failedLoginCount  Int       @default(0)
+  lastFailedAt      DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   reports              Report[]
-  notificationsAboutMe Notification[] @relation("NotificationRelatedUser")
+  notificationsAboutMe Notification[]       @relation("NotificationRelatedUser")
   externalSubmissions  ExternalSubmission[]
 }
 
 model Notification {
-  id             String   @id @default(cuid())
-  message        String
-  relatedUserId  String?
-  relatedUser    User?    @relation("NotificationRelatedUser", fields: [relatedUserId], references: [id], onDelete: SetNull)
-  isRead         Boolean  @default(false)
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  message       String
+  relatedUserId String?
+  relatedUser   User?    @relation("NotificationRelatedUser", fields: [relatedUserId], references: [id], onDelete: SetNull)
+  isRead        Boolean  @default(false)
+  createdAt     DateTime @default(now())
 }
 
 model Report {
@@ -70,9 +71,9 @@ model Report {
   targetYear  Int // 対象月(年)
   targetMonth Int // 対象月(月)
 
-  gender           String?
-  age              Int?
-  experienceYears  Int? // 経験年数
+  gender          String?
+  age             Int?
+  experienceYears Int? // 経験年数
 
   clientCompany String // 参画先企業
   workLocation  String // 作業場所
@@ -85,29 +86,29 @@ model Report {
   projectName             String // プロジェクト名/作業内容の見出し
   projectPeriodStartYear  Int?
   projectPeriodStartMonth Int?
-  projectPeriodOngoing    Boolean @default(true) // 現在も継続中か
+  projectPeriodOngoing    Boolean  @default(true) // 現在も継続中か
   projectPeriodEndYear    Int?
   projectPeriodEndMonth   Int?
   projectPeriodMonths     Int? // 期間(ヶ月数)
-  workContent             String  @db.Text // 作業内容
+  workContent             String   @db.Text // 作業内容
   devProcesses            String[] // 開発工程(顧客折衝〜保守運用の選択済みラベル)
 
   deliverables String? @db.Text // 成果物
   troubles     String? @db.Text // 今月の困った点と対応・解決方法
   goodPoints   String? @db.Text // 今月の良かった点/改善提案など
 
-  condition           RatingLevel? // 体調
-  motivation          RatingLevel? // モチベーション
-  workload            RatingLevel? // 業務量
-  difficulty          RatingLevel? // 業務難易度
-  teamConsultability  RatingLevel? // チーム内の相談しやすさ
-  growth              RatingLevel? // 成長実感
+  condition          RatingLevel? // 体調
+  motivation         RatingLevel? // モチベーション
+  workload           RatingLevel? // 業務量
+  difficulty         RatingLevel? // 業務難易度
+  teamConsultability RatingLevel? // チーム内の相談しやすさ
+  growth             RatingLevel? // 成長実感
 
   pdfBlobUrl String? // 生成済みPDFの保存先URL
 
-  reviewStatus  ReviewStatus @default(PENDING) // レビュー状況
-  reviewComment String?      @db.Text // 差し戻し理由・指摘事項
-  reviewedAt    DateTime? // レビュー日時
+  reviewStatus   ReviewStatus @default(PENDING) // レビュー状況
+  reviewComment  String?      @db.Text // 差し戻し理由・指摘事項
+  reviewedAt     DateTime? // レビュー日時
   reviewedByName String? // レビューした管理者名
 
   createdAt DateTime @default(now())
@@ -123,14 +124,14 @@ model Report {
 // 経由しないケースを管理者が手動で「確認済み」として記録するための情報。
 // Reportを作らずに済ませたい月なので、Reportとは別テーブルにしている。
 model ExternalSubmission {
-  id             String   @id @default(cuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id])
-  targetYear     Int
-  targetMonth    Int
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  targetYear      Int
+  targetMonth     Int
   confirmedByName String // 確認した管理者名
-  note           String? // 任意メモ
-  createdAt      DateTime @default(now())
+  note            String? // 任意メモ
+  createdAt       DateTime @default(now())
 
   @@unique([userId, targetYear, targetMonth])
 }

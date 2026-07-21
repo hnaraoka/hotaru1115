@@ -8,6 +8,7 @@ import {
   MAX_FAILED_LOGIN_ATTEMPTS,
   SESSION_ACTIVE_RECHECK_MINUTES,
 } from "@/lib/authConstants";
+import { isSessionStillValid } from "@/lib/sessionValidity";
 
 class AccountLockedError extends CredentialsSignin {
   code = "account-locked";
@@ -68,20 +69,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.loginId = (user as { loginId: string }).loginId;
         token.role = (user as { role: string }).role;
         token.activeCheckedAt = Date.now();
+        token.authenticatedAt = Date.now();
         return token;
       }
 
-      // Periodically re-confirm the account is still active (and pick up
-      // role changes) so disabling a user takes effect within a few minutes
-      // instead of waiting out the full ~30-day session lifetime.
+      // Periodically re-confirm the account is still active, hasn't had its
+      // password changed since this session was issued (so resetting a
+      // compromised user's password actually logs out an attacker who was
+      // already using the old session), and pick up role changes — so none
+      // of these take the full ~30-day session lifetime to kick in.
       const lastChecked = (token.activeCheckedAt as number | undefined) ?? 0;
       const dueForRecheck = Date.now() - lastChecked > SESSION_ACTIVE_RECHECK_MINUTES * 60 * 1000;
       if (dueForRecheck && token.id) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id as string },
-          select: { isActive: true, role: true },
+          select: { isActive: true, role: true, passwordChangedAt: true },
         });
-        if (!dbUser || !dbUser.isActive) return null;
+        const authenticatedAt = (token.authenticatedAt as number | undefined) ?? 0;
+        if (!dbUser || !isSessionStillValid(dbUser, authenticatedAt)) return null;
         token.role = dbUser.role;
         token.activeCheckedAt = Date.now();
       }
