@@ -52,7 +52,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     const report = await prisma.report.update({
       where: { id },
-      data: toReportUpdateData(parsed.data),
+      data: {
+        ...toReportUpdateData(parsed.data),
+        // 内容が変わった以上、管理者に再確認してもらう必要があるため、
+        // 本人による保存のたびにレビュー状況を未レビューへ戻す。
+        reviewStatus: "PENDING",
+        reviewComment: null,
+        reviewedAt: null,
+        reviewedByName: null,
+      },
     });
     return NextResponse.json(report);
   } catch (error: unknown) {

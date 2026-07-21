@@ -2,6 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { MONTH_OPTIONS } from "@/lib/constants";
 import { SendRemindersButton } from "@/components/admin/SendRemindersButton";
+import { MarkExternalSubmissionButton } from "@/components/admin/MarkExternalSubmissionButton";
+import { previousTargetMonthJst } from "@/lib/reminder";
+import { reviewStatusLabel, reviewStatusColor } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +23,11 @@ type Props = { searchParams: Promise<Record<string, string | string[] | undefine
 
 export default async function AdminStatusPage({ searchParams }: Props) {
   const params = await searchParams;
-  const now = new Date();
-  const targetYear = parseIntParam(params.year, now.getFullYear());
-  const targetMonth = parseIntParam(params.month, now.getMonth() + 1);
+  const defaultTarget = previousTargetMonthJst();
+  const targetYear = parseIntParam(params.year, defaultTarget.year);
+  const targetMonth = parseIntParam(params.month, defaultTarget.month);
 
-  const [users, reports] = await Promise.all([
+  const [users, reports, externalSubmissions] = await Promise.all([
     prisma.user.findMany({
       where: { isActive: true },
       orderBy: [{ role: "asc" }, { name: "asc" }],
@@ -32,12 +35,17 @@ export default async function AdminStatusPage({ searchParams }: Props) {
     }),
     prisma.report.findMany({
       where: { targetYear, targetMonth },
-      select: { id: true, userId: true, submittedAt: true },
+      select: { id: true, userId: true, submittedAt: true, reviewStatus: true },
+    }),
+    prisma.externalSubmission.findMany({
+      where: { targetYear, targetMonth },
+      select: { userId: true, confirmedByName: true, note: true },
     }),
   ]);
 
   const reportByUserId = new Map(reports.map((r) => [r.userId, r]));
-  const submittedCount = users.filter((u) => reportByUserId.has(u.id)).length;
+  const externalByUserId = new Map(externalSubmissions.map((e) => [e.userId, e]));
+  const submittedCount = users.filter((u) => reportByUserId.has(u.id) || externalByUserId.has(u.id)).length;
 
   const prevMonth = targetMonth === 1 ? { year: targetYear - 1, month: 12 } : { year: targetYear, month: targetMonth - 1 };
   const nextMonth = targetMonth === 12 ? { year: targetYear + 1, month: 1 } : { year: targetYear, month: targetMonth + 1 };
@@ -56,7 +64,7 @@ export default async function AdminStatusPage({ searchParams }: Props) {
           <div className="field" style={{ width: 110 }}>
             <label htmlFor="year">対象年</label>
             <select id="year" name="year" defaultValue={targetYear}>
-              {yearOptions(now.getFullYear()).map((y) => (
+              {yearOptions(defaultTarget.year).map((y) => (
                 <option key={y} value={y}>
                   {y}年
                 </option>
@@ -112,17 +120,29 @@ export default async function AdminStatusPage({ searchParams }: Props) {
       <ul className="report-list">
         {users.map((u) => {
           const report = reportByUserId.get(u.id);
+          const external = externalByUserId.get(u.id);
           return (
             <li key={u.id}>
               {report ? (
                 <Link href={`/reports/${report.id}`} className="report-item">
                   <div className="report-item-top">
                     <span className="report-item-title">{u.name}</span>
-                    <span
-                      className="report-item-period"
-                      style={{ background: "color-mix(in srgb, #16a34a 14%, transparent)", color: "#16a34a" }}
-                    >
-                      提出済み
+                    <span style={{ display: "flex", gap: 6 }}>
+                      <span
+                        className="report-item-period"
+                        style={{ background: "color-mix(in srgb, #16a34a 14%, transparent)", color: "#16a34a" }}
+                      >
+                        提出済み
+                      </span>
+                      <span
+                        className="report-item-period"
+                        style={{
+                          background: `color-mix(in srgb, ${reviewStatusColor(report.reviewStatus)} 14%, transparent)`,
+                          color: reviewStatusColor(report.reviewStatus),
+                        }}
+                      >
+                        {reviewStatusLabel(report.reviewStatus)}
+                      </span>
                     </span>
                   </div>
                   <div className="report-item-meta">
@@ -135,16 +155,40 @@ export default async function AdminStatusPage({ searchParams }: Props) {
                 <div className="report-item" style={{ cursor: "default" }}>
                   <div className="report-item-top">
                     <span className="report-item-title">{u.name}</span>
-                    <span
-                      className="report-item-period"
-                      style={{ background: "color-mix(in srgb, var(--danger) 14%, transparent)", color: "var(--danger)" }}
-                    >
-                      未提出
-                    </span>
+                    {external ? (
+                      <span
+                        className="report-item-period"
+                        style={{ background: "color-mix(in srgb, #16a34a 14%, transparent)", color: "#16a34a" }}
+                      >
+                        確認済み（外部提出）
+                      </span>
+                    ) : (
+                      <span
+                        className="report-item-period"
+                        style={{ background: "color-mix(in srgb, var(--danger) 14%, transparent)", color: "var(--danger)" }}
+                      >
+                        未提出
+                      </span>
+                    )}
                   </div>
                   <div className="report-item-meta">
                     <span>ログインID: {u.loginId}</span>
                     <span>{ROLE_LABEL[u.role]}</span>
+                    {external && (
+                      <span>
+                        確認者: {external.confirmedByName}
+                        {external.note ? `（${external.note}）` : ""}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ marginTop: 8 }}>
+                    <MarkExternalSubmissionButton
+                      userId={u.id}
+                      userName={u.name}
+                      targetYear={targetYear}
+                      targetMonth={targetMonth}
+                      marked={!!external}
+                    />
                   </div>
                 </div>
               )}

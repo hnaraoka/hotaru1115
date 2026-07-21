@@ -62,6 +62,30 @@ export async function notifySubmissionReminder(
   }
 }
 
+export async function notifyRevisionRequested(
+  user: Pick<User, "loginId" | "name" | "email">,
+  targetYear: number,
+  targetMonth: number,
+  comment: string,
+) {
+  if (!resend) {
+    console.warn("RESEND_API_KEY が未設定のため、差し戻し通知のメール送信はスキップされました。");
+    return;
+  }
+  if (!user.email) return;
+
+  try {
+    await resend.emails.send({
+      from: notifyFromAddress,
+      to: user.email,
+      subject: `【月次報告書アプリ】${targetYear}年${targetMonth}月分の報告書に指摘があります`,
+      text: `${user.name}さん\n\n${targetYear}年${targetMonth}月分の月次報告書について、管理者より指摘がありました。\n\n${comment}\n\nアプリにログインし、内容を修正のうえ再度保存してください。`,
+    });
+  } catch (error) {
+    console.error(`差し戻し通知メールの送信に失敗しました (${user.loginId})`, error);
+  }
+}
+
 export async function notifyPasswordReset(
   user: Pick<User, "loginId" | "name" | "email">,
   newPassword: string,

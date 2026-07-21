@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { currentTargetMonthJst } from "@/lib/reminder";
+import { previousTargetMonthJst } from "@/lib/reminder";
+import { reviewStatusLabel, reviewStatusColor } from "@/lib/format";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ export default async function Home({ searchParams }: Props) {
     ];
   }
 
-  const [reports, yearRows, current] = await Promise.all([
+  const [reports, yearRows, previousMonthStatus] = await Promise.all([
     prisma.report.findMany({
       where,
       orderBy: [{ targetYear: "desc" }, { targetMonth: "desc" }, { createdAt: "desc" }],
@@ -43,7 +44,7 @@ export default async function Home({ searchParams }: Props) {
       orderBy: { targetYear: "desc" },
     }),
     (async () => {
-      const { year, month } = currentTargetMonthJst();
+      const { year, month } = previousTargetMonthJst();
       const report = await prisma.report.findUnique({
         where: { userId_targetYear_targetMonth: { userId: user.id, targetYear: year, targetMonth: month } },
         select: { id: true },
@@ -74,10 +75,10 @@ export default async function Home({ searchParams }: Props) {
         </Link>
       </div>
 
-      {hasAnyReport && !current.submitted && (
+      {hasAnyReport && !previousMonthStatus.submitted && (
         <div className="reminder-banner">
           <span>
-            今月分（{current.year}年{current.month}月）の報告書はまだ提出されていません。
+            前月分（{previousMonthStatus.year}年{previousMonthStatus.month}月）の報告書はまだ提出されていません。
           </span>
           <Link href="/reports/new" className="btn btn-secondary">
             作成する
@@ -147,8 +148,21 @@ export default async function Home({ searchParams }: Props) {
                     <span className="report-item-title">
                       {report.clientCompany} / {report.projectName}
                     </span>
-                    <span className="report-item-period">
-                      {report.targetYear}年{report.targetMonth}月
+                    <span style={{ display: "flex", gap: 6 }}>
+                      {report.reviewStatus !== "PENDING" && (
+                        <span
+                          className="report-item-period"
+                          style={{
+                            background: `color-mix(in srgb, ${reviewStatusColor(report.reviewStatus)} 14%, transparent)`,
+                            color: reviewStatusColor(report.reviewStatus),
+                          }}
+                        >
+                          {reviewStatusLabel(report.reviewStatus)}
+                        </span>
+                      )}
+                      <span className="report-item-period">
+                        {report.targetYear}年{report.targetMonth}月
+                      </span>
                     </span>
                   </div>
                   <div className="report-item-meta">

@@ -9,6 +9,28 @@ export function techCategoryLabel(value: string): string {
   return TECH_CATEGORY_OPTIONS.find((c) => c.value === value)?.label ?? value;
 }
 
+export function reviewStatusLabel(status: string): string {
+  switch (status) {
+    case "APPROVED":
+      return "承認済み";
+    case "NEEDS_REVISION":
+      return "差し戻し";
+    default:
+      return "未レビュー";
+  }
+}
+
+export function reviewStatusColor(status: string): string {
+  switch (status) {
+    case "APPROVED":
+      return "#16a34a";
+    case "NEEDS_REVISION":
+      return "var(--danger)";
+    default:
+      return "var(--muted)";
+  }
+}
+
 export function formatProjectPeriod(report: Report): string {
   const start =
     report.projectPeriodStartYear && report.projectPeriodStartMonth

@@ -9,6 +9,15 @@ export function currentTargetMonthJst(): { year: number; month: number } {
   return { year: jstNow.getUTCFullYear(), month: jstNow.getUTCMonth() + 1 };
 }
 
+// 月次報告書は「前月分を今月5日までに提出する」運用のため、リマインド対象
+// の月は常に前月になる。
+export function previousTargetMonthJst(): { year: number; month: number } {
+  const jstNow = new Date(Date.now() + JST_OFFSET_MS);
+  const firstOfThisMonth = Date.UTC(jstNow.getUTCFullYear(), jstNow.getUTCMonth(), 1);
+  const lastMonth = new Date(firstOfThisMonth - 1);
+  return { year: lastMonth.getUTCFullYear(), month: lastMonth.getUTCMonth() + 1 };
+}
+
 export type ReminderSummary = {
   targetYear: number;
   targetMonth: number;
@@ -22,7 +31,7 @@ export async function sendSubmissionReminders(
   targetMonth: number,
   triggeredBy: "cron" | "manual",
 ): Promise<ReminderSummary> {
-  const [users, reports] = await Promise.all([
+  const [users, reports, externalSubmissions] = await Promise.all([
     prisma.user.findMany({
       where: { isActive: true },
       select: { id: true, loginId: true, name: true, email: true },
@@ -31,9 +40,16 @@ export async function sendSubmissionReminders(
       where: { targetYear, targetMonth },
       select: { userId: true },
     }),
+    prisma.externalSubmission.findMany({
+      where: { targetYear, targetMonth },
+      select: { userId: true },
+    }),
   ]);
 
-  const submittedUserIds = new Set(reports.map((r) => r.userId));
+  const submittedUserIds = new Set([
+    ...reports.map((r) => r.userId),
+    ...externalSubmissions.map((e) => e.userId),
+  ]);
   const unsubmitted = users.filter((u) => !submittedUserIds.has(u.id));
   const withEmail = unsubmitted.filter((u) => u.email);
 

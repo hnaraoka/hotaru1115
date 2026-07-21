@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { currentTargetMonthJst, sendSubmissionReminders } from "@/lib/reminder";
+import { previousTargetMonthJst, sendSubmissionReminders } from "@/lib/reminder";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "権限がありません" }, { status: 401 });
   }
 
-  const { year, month } = currentTargetMonthJst();
+  const { year, month } = previousTargetMonthJst();
   const summary = await sendSubmissionReminders(year, month, "cron");
   return NextResponse.json(summary);
 }

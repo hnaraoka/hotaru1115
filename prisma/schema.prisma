@@ -28,6 +28,12 @@ enum TechCategory {
   OS_ENV // OS/クラウド/開発環境
 }
 
+enum ReviewStatus {
+  PENDING // 未レビュー
+  APPROVED // 承認済み
+  NEEDS_REVISION // 差し戻し
+}
+
 model User {
   id               String    @id @default(cuid())
   loginId          String    @unique
@@ -43,6 +49,7 @@ model User {
 
   reports              Report[]
   notificationsAboutMe Notification[] @relation("NotificationRelatedUser")
+  externalSubmissions  ExternalSubmission[]
 }
 
 model Notification {
@@ -98,11 +105,32 @@ model Report {
 
   pdfBlobUrl String? // 生成済みPDFの保存先URL
 
+  reviewStatus  ReviewStatus @default(PENDING) // レビュー状況
+  reviewComment String?      @db.Text // 差し戻し理由・指摘事項
+  reviewedAt    DateTime? // レビュー日時
+  reviewedByName String? // レビューした管理者名
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   techStackItems  TechStackItem[]
   workAllocations WorkAllocation[]
+
+  @@unique([userId, targetYear, targetMonth])
+}
+
+// 独自にExcel等で作成しLINE WORKSドライブへ直接提出したなど、このアプリを
+// 経由しないケースを管理者が手動で「確認済み」として記録するための情報。
+// Reportを作らずに済ませたい月なので、Reportとは別テーブルにしている。
+model ExternalSubmission {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  targetYear     Int
+  targetMonth    Int
+  confirmedByName String // 確認した管理者名
+  note           String? // 任意メモ
+  createdAt      DateTime @default(now())
 
   @@unique([userId, targetYear, targetMonth])
 }

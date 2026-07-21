@@ -3,8 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DeleteReportButton } from "@/components/report/DeleteReportButton";
-import { ratingLabel, formatProjectPeriod } from "@/lib/format";
+import { ReviewPanel } from "@/components/report/ReviewPanel";
+import { ratingLabel, formatProjectPeriod, reviewStatusLabel, reviewStatusColor } from "@/lib/format";
 import { RATING_FIELDS, TECH_CATEGORY_OPTIONS } from "@/lib/constants";
+import { computeReviewFlags } from "@/lib/reportFlags";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,9 @@ export default async function ReportDetailPage({ params }: Props) {
   if (!report) notFound();
   if (report.userId !== session.user.id && session.user.role !== "ADMIN") notFound();
 
+  const isOwner = report.userId === session.user.id;
+  const isAdmin = session.user.role === "ADMIN";
+
   const techByCategory = TECH_CATEGORY_OPTIONS.map(({ value, label }) => ({
     label,
     items: report.techStackItems.filter((t) => t.category === value).map((t) => t.name),
@@ -39,8 +44,19 @@ export default async function ReportDetailPage({ params }: Props) {
           <h1 style={{ fontSize: 22, fontWeight: 700 }}>
             {report.clientCompany} / {report.projectName}
           </h1>
-          <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>
-            {report.targetYear}年{report.targetMonth}月分 月次報告書
+          <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 4, display: "flex", gap: 8, alignItems: "center" }}>
+            <span>
+              {report.targetYear}年{report.targetMonth}月分 月次報告書
+            </span>
+            <span
+              className="report-item-period"
+              style={{
+                background: `color-mix(in srgb, ${reviewStatusColor(report.reviewStatus)} 14%, transparent)`,
+                color: reviewStatusColor(report.reviewStatus),
+              }}
+            >
+              {reviewStatusLabel(report.reviewStatus)}
+            </span>
           </p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -61,6 +77,19 @@ export default async function ReportDetailPage({ params }: Props) {
           <DeleteReportButton id={report.id} />
         </div>
       </div>
+
+      {isOwner && report.reviewStatus === "NEEDS_REVISION" && (
+        <div
+          className="error-banner"
+          style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}
+        >
+          <strong>管理者から指摘があります。内容を修正のうえ、再度保存してください。</strong>
+          <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{report.reviewComment}</p>
+          <Link href={`/reports/${report.id}/edit`} className="btn btn-primary" style={{ alignSelf: "flex-start" }}>
+            編集して再提出する
+          </Link>
+        </div>
+      )}
 
       <div className="detail-meta">
         <div className="detail-meta-item">
@@ -203,6 +232,17 @@ export default async function ReportDetailPage({ params }: Props) {
             ))}
         </ul>
       </div>
+
+      {isAdmin && (
+        <ReviewPanel
+          reportId={report.id}
+          initialStatus={report.reviewStatus}
+          initialComment={report.reviewComment}
+          reviewedAt={report.reviewedAt ? report.reviewedAt.toISOString() : null}
+          reviewedByName={report.reviewedByName}
+          flags={computeReviewFlags(report)}
+        />
+      )}
     </>
   );
 }
