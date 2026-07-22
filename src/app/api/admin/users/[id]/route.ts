@@ -18,6 +18,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     role?: "ADMIN" | "USER";
     email?: string | null;
     isActive?: boolean;
+    birthDate?: Date | null;
+    engineerStartYear?: number | null;
+    engineerStartMonth?: number | null;
     passwordHash?: string;
     passwordChangedAt?: Date;
     failedLoginCount?: number;
@@ -27,6 +30,39 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (body.role === "ADMIN" || body.role === "USER") data.role = body.role;
   if (typeof body.email === "string") data.email = body.email.trim() === "" ? null : body.email.trim();
   if (typeof body.isActive === "boolean") data.isActive = body.isActive;
+
+  if ("birthDate" in body) {
+    if (body.birthDate === null || body.birthDate === "") {
+      data.birthDate = null;
+    } else if (typeof body.birthDate === "string") {
+      const parsed = new Date(body.birthDate);
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json({ error: "生年月日の指定が正しくありません" }, { status: 400 });
+      }
+      data.birthDate = parsed;
+    }
+  }
+
+  if ("engineerStartYear" in body || "engineerStartMonth" in body) {
+    const year = body.engineerStartYear;
+    const month = body.engineerStartMonth;
+    if (year === null && month === null) {
+      data.engineerStartYear = null;
+      data.engineerStartMonth = null;
+    } else if (
+      Number.isInteger(year) &&
+      year >= 1950 &&
+      year <= 2100 &&
+      Number.isInteger(month) &&
+      month >= 1 &&
+      month <= 12
+    ) {
+      data.engineerStartYear = year;
+      data.engineerStartMonth = month;
+    } else {
+      return NextResponse.json({ error: "エンジニア開始年月の指定が正しくありません" }, { status: 400 });
+    }
+  }
 
   let newPassword: string | null = null;
   let plainPasswordForEmail: string | null = null;

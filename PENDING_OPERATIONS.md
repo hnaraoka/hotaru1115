@@ -1,10 +1,13 @@
 # 保留中の運用作業
 
-## 本番マイグレーション適用待ち：パスワード変更時のセッション無効化
+## 本番マイグレーション適用待ち
 
-- 対象コミット: `dea544b`（ブランチ `claude/monthly-report-pdf-excel-import-t5fq7x`）
-- 内容: パスワードを変更・再発行した際に、既にログイン済みの古いセッションを無効化するための修正。`User` テーブルに `passwordChangedAt` カラムを追加するマイグレーション（`prisma/migrations/20260721235114_add_password_changed_at/`）を含む。
-- **本番ブランチ (`claude/vercel-nodejs-monthly-report-smtys4`) へはまだマージ・デプロイしていない。**
+以下の2件のマイグレーションが本番DBに未適用（**本番ブランチ `claude/vercel-nodejs-monthly-report-smtys4` へはまだマージ・デプロイしていない**）。
+
+1. `prisma/migrations/20260721235114_add_password_changed_at/` — パスワード変更・再発行時に既存セッションを無効化するための `User.passwordChangedAt`
+2. `prisma/migrations/20260722025300_add_birth_date_and_engineer_start/` — 月次報告書の年齢・経験年数を自動計算するための `User.birthDate` / `User.engineerStartYear` / `User.engineerStartMonth`
+
+`npx prisma migrate deploy` は未適用のマイグレーションを古い順にまとめて適用するので、**1回の実行で両方とも反映される**。
 
 このリポジトリはVercelのビルド時にマイグレーションを自動実行しない（`npm run build` は `prisma generate && next build` のみ）。マイグレーションは本番DBに対して手動で `npx prisma migrate deploy` を実行する運用のため、ユーザー自身の作業が必要。
 
@@ -15,7 +18,7 @@
    ```bash
    DATABASE_URL="<本番のDATABASE_URL>" npx prisma migrate deploy
    ```
-   適用対象は上記マイグレーション1件のみ。単純な `ALTER TABLE "User" ADD COLUMN "passwordChangedAt" ... DEFAULT CURRENT_TIMESTAMP` で、既存データの削除・変換はない。
+   いずれも既存データの削除・変換を伴わない単純なカラム追加（`ADD COLUMN`）のみ。
 3. 適用が完了したら、Claudeに伝えて本番ブランチへのマージ・プッシュ（＝コードのデプロイ）を依頼する
 
 ### 順序が重要
@@ -24,7 +27,8 @@
 
 ### 補足
 
-マイグレーション適用後、既存ユーザー全員の `passwordChangedAt` にはマイグレーション実行時刻が入る。今回の修正が本番デプロイされて反映されると、「セッション発行時刻 < passwordChangedAt」となる現在ログイン中の全ユーザーは、次の再チェック（最大5分以内）で一度だけ再ログインを求められる。実害はないが、事前に周知しておくと親切。
+- マイグレーション1（passwordChangedAt）適用後、本番デプロイが反映されると、現在ログイン中の全ユーザーは次の再チェック（最大5分以内）で一度だけ再ログインを求められる。実害はないが、事前に周知しておくと親切。
+- マイグレーション2（birthDate等）は既存ユーザー全員 `NULL` から始まる。年齢・経験年数の自動計算を使うには、管理者がユーザー編集画面（`/admin/users/[id]`）で生年月日を設定する必要がある（任意項目、未設定でも他機能に支障はない）。エンジニア開始年月は各ユーザーが初回の月次報告書作成時に自分で入力する。
 
 ---
 

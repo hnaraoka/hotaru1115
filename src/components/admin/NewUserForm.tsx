@@ -21,6 +21,7 @@ export function NewUserForm() {
       name: formData.get("name"),
       role: formData.get("role"),
       email: formData.get("email"),
+      birthDate: formData.get("birthDate") || null,
     };
 
     const res = await fetch("/api/admin/users", {
@@ -94,6 +95,13 @@ export function NewUserForm() {
           </label>
           <input id="email" name="email" type="email" placeholder="user@example.com" />
         </div>
+      </div>
+
+      <div className="field">
+        <label htmlFor="birthDate">
+          生年月日 <span className="hint">(月次報告書の年齢を自動計算するために使用します。任意)</span>
+        </label>
+        <input id="birthDate" name="birthDate" type="date" />
       </div>
 
       <div className="form-actions">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Report, TechStackItem, WorkAllocation } from "@prisma/client";
 import { reportInputSchema, type ReportInput } from "@/lib/reportSchema";
 import { emptyTechStack, techStackItemsToRecord, techStackRecordToItems } from "@/lib/techStack";
+import { calculateAgeAsOf, calculateExperienceYears } from "@/lib/ageCalc";
 import type { ParsedReportFields } from "@/lib/pdfImport/parseLegacyReport";
 import type { FormState, ReferenceFields } from "@/components/report/reportFormTypes";
 import { WorkAllocationEditor } from "@/components/report/WorkAllocationEditor";
@@ -31,8 +32,6 @@ function buildInitialState(report?: ReportWithRelations): FormState {
       targetYear: now.getFullYear(),
       targetMonth: now.getMonth() + 1,
       gender: "",
-      age: "",
-      experienceYears: "",
       clientCompany: "",
       workLocation: "",
       workDays: "",
@@ -67,8 +66,6 @@ function buildInitialState(report?: ReportWithRelations): FormState {
     targetYear: report.targetYear,
     targetMonth: report.targetMonth,
     gender: report.gender ?? "",
-    age: report.age?.toString() ?? "",
-    experienceYears: report.experienceYears?.toString() ?? "",
     clientCompany: report.clientCompany,
     workLocation: report.workLocation,
     workDays: report.workDays?.toString() ?? "",
@@ -131,14 +128,14 @@ function computeProjectPeriodMonths(
   return String((targetYear - startYear) * 12 + (targetMonth - startMonth) + 1);
 }
 
-function buildPayload(state: FormState): unknown {
+function buildPayload(state: FormState, computedAge: string, computedExperienceYears: string): unknown {
   return {
     submittedAt: state.submittedAt,
     targetYear: state.targetYear,
     targetMonth: state.targetMonth,
     gender: state.gender || null,
-    age: toNullableInt(state.age),
-    experienceYears: toNullableInt(state.experienceYears),
+    age: toNullableInt(computedAge),
+    experienceYears: toNullableInt(computedExperienceYears),
     clientCompany: state.clientCompany,
     workLocation: state.workLocation,
     workDays: toNullableInt(state.workDays),
@@ -177,7 +174,17 @@ function buildPayload(state: FormState): unknown {
   };
 }
 
-export function ReportForm({ report }: { report?: ReportWithRelations }) {
+export function ReportForm({
+  report,
+  birthDate,
+  engineerStartYear,
+  engineerStartMonth,
+}: {
+  report?: ReportWithRelations;
+  birthDate: Date | null;
+  engineerStartYear: number | null;
+  engineerStartMonth: number | null;
+}) {
   const router = useRouter();
   const isEdit = !!report;
   const [state, setState] = useState<FormState>(() => buildInitialState(report));
@@ -244,6 +251,15 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
     };
   }, [isEdit]);
 
+  // 年齢・経験年数は対象年月と生年月日/エンジニア開始年月から自動計算する
+  // 派生値なので、期間(ヶ月数)と同様にstateに持たず描画のたびに計算する
+  // （手入力させない）。
+  const computedAge = birthDate ? String(calculateAgeAsOf(birthDate, state.targetYear, state.targetMonth)) : "";
+  const computedExperienceYears =
+    engineerStartYear && engineerStartMonth
+      ? String(calculateExperienceYears(engineerStartYear, engineerStartMonth, state.targetYear, state.targetMonth))
+      : "";
+
   const computedPeriodMonths = computeProjectPeriodMonths(
     state.projectPeriodStartYear,
     state.projectPeriodStartMonth,
@@ -265,9 +281,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
     setState((prev) => ({
       ...prev,
       gender: latestReport.gender ?? prev.gender,
-      age: latestReport.age !== null ? String(latestReport.age) : prev.age,
-      experienceYears:
-        latestReport.experienceYears !== null ? String(latestReport.experienceYears) : prev.experienceYears,
+      // 年齢・経験年数は前回値を引き継がず、自動計算に任せる。
       clientCompany: latestReport.clientCompany,
       workLocation: latestReport.workLocation,
       projectName: latestReport.projectName,
@@ -337,8 +351,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
       if (parsed.targetYear !== undefined) next.targetYear = parsed.targetYear;
       if (parsed.targetMonth !== undefined) next.targetMonth = parsed.targetMonth;
       if (parsed.gender !== undefined) next.gender = parsed.gender;
-      if (parsed.age !== undefined) next.age = parsed.age;
-      if (parsed.experienceYears !== undefined) next.experienceYears = parsed.experienceYears;
+      // 年齢・経験年数は読み込み元の値を使わず、自動計算に任せる。
       if (parsed.clientCompany !== undefined) next.clientCompany = parsed.clientCompany;
       if (parsed.workLocation !== undefined) next.workLocation = parsed.workLocation;
       // 月間実労働日数・時間・テレワーク日数・現場日数は月ごとに変わるため、
@@ -396,7 +409,7 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
     setFormErrors([]);
     setSubmitError(null);
 
-    const payload = buildPayload(state);
+    const payload = buildPayload(state, computedAge, computedExperienceYears);
     const parsed = reportInputSchema.safeParse(payload);
     if (!parsed.success) {
       const nextFieldErrors: Record<string, string[]> = {};
@@ -472,7 +485,13 @@ export function ReportForm({ report }: { report?: ReportWithRelations }) {
         />
       )}
 
-      <BasicInfoSection {...sectionProps} />
+      <BasicInfoSection
+        {...sectionProps}
+        computedAge={computedAge}
+        computedExperienceYears={computedExperienceYears}
+        ageAvailable={!!birthDate}
+        experienceAvailable={!!(engineerStartYear && engineerStartMonth)}
+      />
       <ClientWorkSection {...sectionProps} />
       <TechStackSection {...sectionProps} />
       <ProjectSection

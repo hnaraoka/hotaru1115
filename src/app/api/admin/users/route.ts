@@ -37,6 +37,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "ログインIDと氏名は必須です" }, { status: 400 });
   }
 
+  let birthDate: Date | null = null;
+  if (typeof body.birthDate === "string" && body.birthDate.trim() !== "") {
+    const parsed = new Date(body.birthDate);
+    if (Number.isNaN(parsed.getTime())) {
+      return NextResponse.json({ error: "生年月日の指定が正しくありません" }, { status: 400 });
+    }
+    birthDate = parsed;
+  }
+
   const existing = await prisma.user.findUnique({ where: { loginId } });
   if (existing) {
     return NextResponse.json({ error: "このログインIDは既に使用されています" }, { status: 400 });
@@ -46,7 +55,7 @@ export async function POST(request: NextRequest) {
   const passwordHash = await hashPassword(initialPassword);
 
   const user = await prisma.user.create({
-    data: { loginId, name, role, email, passwordHash },
+    data: { loginId, name, role, email, birthDate, passwordHash },
     select: { id: true, loginId: true, name: true, role: true, email: true },
   });
 

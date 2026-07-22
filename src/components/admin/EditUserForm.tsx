@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CopyTextButton } from "@/components/admin/CopyTextButton";
+import { MONTH_OPTIONS } from "@/lib/constants";
 
 type UserData = {
   id: string;
@@ -11,6 +12,9 @@ type UserData = {
   role: "ADMIN" | "USER";
   email: string | null;
   isActive: boolean;
+  birthDate: string;
+  engineerStartYear: number | null;
+  engineerStartMonth: number | null;
 };
 
 export function EditUserForm({ user, emailConfigured }: { user: UserData; emailConfigured: boolean }) {
@@ -43,11 +47,17 @@ export function EditUserForm({ user, emailConfigured }: { user: UserData; emailC
 
     setSubmitting(true);
 
+    const engineerStartYear = String(formData.get("engineerStartYear") ?? "").trim();
+    const engineerStartMonth = String(formData.get("engineerStartMonth") ?? "").trim();
+
     const payload: Record<string, unknown> = {
       name: formData.get("name"),
       role: formData.get("role"),
       email: formData.get("email"),
       isActive: formData.get("isActive") === "on",
+      birthDate: formData.get("birthDate") || null,
+      engineerStartYear: engineerStartYear === "" ? null : Number(engineerStartYear),
+      engineerStartMonth: engineerStartMonth === "" ? null : Number(engineerStartMonth),
     };
     if (password !== "") payload.password = password;
 
@@ -146,6 +156,37 @@ export function EditUserForm({ user, emailConfigured }: { user: UserData; emailC
           <label htmlFor="isActive" style={{ marginBottom: 0 }}>
             アカウントを有効にする
           </label>
+        </div>
+
+        <div className="section-title">月次報告書の自動計算用情報</div>
+        <div className="form-row">
+          <div className="field">
+            <label htmlFor="birthDate">生年月日</label>
+            <input id="birthDate" name="birthDate" type="date" defaultValue={user.birthDate} />
+            <span className="hint">月次報告書の年齢を自動計算するために使用します</span>
+          </div>
+          <div className="field">
+            <label>エンジニア開始年月</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                name="engineerStartYear"
+                type="number"
+                placeholder="年"
+                defaultValue={user.engineerStartYear ?? ""}
+              />
+              <select name="engineerStartMonth" defaultValue={user.engineerStartMonth ?? ""}>
+                <option value="">月</option>
+                {MONTH_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}月
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="hint">
+              本人が初回の報告書作成時に入力する項目です。誤りがあればここで修正できます。
+            </span>
+          </div>
         </div>
 
         <div className="section-title">パスワードを変更する</div>

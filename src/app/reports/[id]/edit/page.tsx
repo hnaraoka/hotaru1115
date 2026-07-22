@@ -20,6 +20,11 @@ export default async function EditReportPage({ params }: Props) {
   if (!report) notFound();
   if (report.userId !== session.user.id && session.user.role !== "ADMIN") notFound();
 
+  const owner = await prisma.user.findUnique({
+    where: { id: report.userId },
+    select: { birthDate: true, engineerStartYear: true, engineerStartMonth: true },
+  });
+
   return (
     <>
       <div className="page-heading">
@@ -30,7 +35,12 @@ export default async function EditReportPage({ params }: Props) {
           </p>
         </div>
       </div>
-      <ReportForm report={report} />
+      <ReportForm
+        report={report}
+        birthDate={owner?.birthDate ?? null}
+        engineerStartYear={owner?.engineerStartYear ?? null}
+        engineerStartMonth={owner?.engineerStartMonth ?? null}
+      />
     </>
   );
 }

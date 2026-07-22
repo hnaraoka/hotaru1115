@@ -2,7 +2,23 @@ import { MONTH_OPTIONS } from "@/lib/constants";
 import { FieldErrorText } from "@/components/report/FormFieldHelpers";
 import type { SectionProps } from "@/components/report/reportFormTypes";
 
-export function BasicInfoSection({ state, update, fieldClass, errorsFor }: SectionProps) {
+type BasicInfoSectionProps = SectionProps & {
+  computedAge: string;
+  computedExperienceYears: string;
+  ageAvailable: boolean;
+  experienceAvailable: boolean;
+};
+
+export function BasicInfoSection({
+  state,
+  update,
+  fieldClass,
+  errorsFor,
+  computedAge,
+  computedExperienceYears,
+  ageAvailable,
+  experienceAvailable,
+}: BasicInfoSectionProps) {
   return (
     <>
       <div className="section-title" style={{ borderTop: "none", paddingTop: 0 }}>
@@ -61,17 +77,22 @@ export function BasicInfoSection({ state, update, fieldClass, errorsFor }: Secti
         </div>
         <div className={fieldClass("age")}>
           <label htmlFor="age">年齢</label>
-          <input id="age" type="number" value={state.age} onChange={(e) => update("age", e.target.value)} />
+          <input id="age" type="number" value={computedAge} disabled />
+          <span className="hint">
+            {ageAvailable
+              ? "対象年月時点の年齢が生年月日から自動計算されます"
+              : "生年月日が未登録のため計算できません（管理者に設定を依頼してください）"}
+          </span>
           <FieldErrorText messages={errorsFor("age")} />
         </div>
         <div className={fieldClass("experienceYears")}>
           <label htmlFor="experienceYears">経験年数</label>
-          <input
-            id="experienceYears"
-            type="number"
-            value={state.experienceYears}
-            onChange={(e) => update("experienceYears", e.target.value)}
-          />
+          <input id="experienceYears" type="number" value={computedExperienceYears} disabled />
+          <span className="hint">
+            {experienceAvailable
+              ? "対象年月時点の経験年数がエンジニア開始年月から自動計算されます"
+              : "エンジニア開始年月が未登録のため計算できません"}
+          </span>
           <FieldErrorText messages={errorsFor("experienceYears")} />
         </div>
       </div>
