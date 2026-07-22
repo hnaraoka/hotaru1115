@@ -47,6 +47,12 @@ export function TagInput({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
+            // e.nativeEvent.isComposing / keyCode 229 guard against Enter
+            // fired while an IME (e.g. Japanese kana→kanji conversion) is
+            // still composing — without it, confirming a conversion commits
+            // the not-yet-finalized text as a tag instead of just finishing
+            // the conversion.
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
             if (e.key === "Enter" || e.key === ",") {
               e.preventDefault();
               addTag();
