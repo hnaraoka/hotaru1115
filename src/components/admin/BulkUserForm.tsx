@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { parseCsv, toCsv } from "@/lib/csv";
 import { SimpleTable } from "@/components/SimpleTable";
+import { CopyTextButton } from "@/components/admin/CopyTextButton";
 
 type PreviewRow = { loginId: string; name: string; role: "ADMIN" | "USER"; email: string | null };
 type ResultRow = PreviewRow & { success: boolean; initialPassword?: string; error?: string };
@@ -25,6 +26,10 @@ const TEMPLATE_CSV = toCsv([
   ["yamada.taro", "山田 太郎", "一般", ""],
   ["sato.hanako", "佐藤 花子", "管理者", "sato@example.com"],
 ]);
+
+function accountCreatedMessage(r: ResultRow): string {
+  return `${r.name}さん\nアカウントを登録しました。\n\nログインID: ${r.loginId}\n初期パスワード: ${r.initialPassword}\n\n次回ログイン後、必要であればパスワードを変更してください。`;
+}
 
 function downloadCsv(filename: string, content: string) {
   const blob = new Blob([`﻿${content}`], { type: "text/csv;charset=utf-8" });
@@ -118,7 +123,7 @@ export function BulkUserForm() {
           {results.length}件中 <strong>{successCount}件成功</strong> / {results.length - successCount}件失敗
         </p>
         <SimpleTable
-          columns={["ログインID", "氏名", "権限", "初期パスワード", "結果"]}
+          columns={["ログインID", "氏名", "権限", "初期パスワード", "結果", "連携"]}
           rows={results.map((r, i) => ({
             key: i,
             cells: [
@@ -129,6 +134,11 @@ export function BulkUserForm() {
               <span key="result" style={{ color: r.success ? "var(--success)" : "var(--danger)" }}>
                 {r.success ? "成功" : `失敗: ${r.error}`}
               </span>,
+              r.success && r.initialPassword ? (
+                <CopyTextButton key="copy" label="LINE WORKS用の文面をコピー" text={accountCreatedMessage(r)} />
+              ) : (
+                "-"
+              ),
             ],
           }))}
         />
