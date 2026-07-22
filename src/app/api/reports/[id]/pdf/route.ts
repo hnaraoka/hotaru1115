@@ -37,6 +37,10 @@ export async function GET(_request: NextRequest, { params }: Params) {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="${encodeURIComponent(fileName)}"`,
+      // Without this, browsers may serve a cached copy of a previous
+      // generation from before the report was last edited, since the URL
+      // (/api/reports/[id]/pdf) never changes.
+      "Cache-Control": "no-store",
     },
   });
 }
