@@ -355,8 +355,13 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
                 width: PERIOD_LABEL_WIDTH + PERIOD_VALUE_WIDTH,
                 borderRight: BORDER,
                 paddingVertical: 8,
-                justifyContent: "space-between",
+                // flex-start (not space-between) so this stays anchored near
+                // the top instead of stretching out when the neighboring
+                // work-content cell wraps to many lines and grows the row
+                // much taller than this cell's own short content needs.
+                justifyContent: "flex-start",
                 alignItems: "center",
+                gap: 6,
               }}
             >
               <Text style={styles.centerText}>{periodStart}</Text>
@@ -395,7 +400,7 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
                         </Text>
                       ))}
                     </View>
-                    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                    <View style={{ alignItems: "center", justifyContent: "flex-start", marginTop: 6 }}>
                       {active && <Text style={{ fontSize: 9, color: "#0b5c1f" }}>○</Text>}
                     </View>
                   </View>
