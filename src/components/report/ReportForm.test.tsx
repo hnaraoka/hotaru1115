@@ -13,9 +13,11 @@ beforeEach(() => {
   );
 });
 
+const noPersonalData = { birthDate: null, engineerStartYear: null, engineerStartMonth: null };
+
 describe("ReportForm (new report)", () => {
   it("renders every section without crashing", async () => {
-    render(<ReportForm />);
+    render(<ReportForm {...noPersonalData} />);
 
     // Wait for the /api/reports/latest effect to settle so it doesn't warn
     // about state updates after the test finishes.
@@ -31,7 +33,7 @@ describe("ReportForm (new report)", () => {
   });
 
   it("shows field-level validation errors instead of submitting when required fields are missing", async () => {
-    const { container } = render(<ReportForm />);
+    const { container } = render(<ReportForm {...noPersonalData} />);
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/reports/latest"));
 
     // Dispatch the submit event directly rather than clicking the button:
@@ -49,11 +51,48 @@ describe("ReportForm (new report)", () => {
   });
 
   it("lets the user type into the project name field", async () => {
-    render(<ReportForm />);
+    render(<ReportForm {...noPersonalData} />);
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/reports/latest"));
 
     const input = screen.getByLabelText("プロジェクト名 *") as HTMLInputElement;
     fireEvent.change(input, { target: { value: "新プロジェクト" } });
     expect(input.value).toBe("新プロジェクト");
+  });
+
+  it("shows the age/experience fields as disabled with a missing-data hint when no birth/start date is set", async () => {
+    render(<ReportForm {...noPersonalData} />);
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/reports/latest"));
+
+    const age = screen.getByLabelText("年齢") as HTMLInputElement;
+    const experience = screen.getByLabelText("経験年数") as HTMLInputElement;
+    expect(age).toBeDisabled();
+    expect(experience).toBeDisabled();
+    expect(age.value).toBe("");
+    expect(experience.value).toBe("");
+    expect(screen.getByText(/生年月日が未登録のため計算できません/)).toBeInTheDocument();
+    expect(screen.getByText(/エンジニア開始年月が未登録のため計算できません/)).toBeInTheDocument();
+  });
+
+  it("auto-calculates age and experience years from birthDate/engineerStart props", async () => {
+    render(
+      <ReportForm
+        birthDate={new Date("1990-04-15T00:00:00Z")}
+        engineerStartYear={2020}
+        engineerStartMonth={4}
+      />,
+    );
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/reports/latest"));
+
+    const targetYear = screen.getByLabelText("対象年 *") as HTMLInputElement;
+    const targetMonth = screen.getByLabelText("対象月 *") as HTMLSelectElement;
+    fireEvent.change(targetYear, { target: { value: "2026" } });
+    fireEvent.change(targetMonth, { target: { value: "7" } });
+
+    const age = screen.getByLabelText("年齢") as HTMLInputElement;
+    const experience = screen.getByLabelText("経験年数") as HTMLInputElement;
+    await waitFor(() => {
+      expect(age.value).toBe("36");
+      expect(experience.value).toBe("6");
+    });
   });
 });

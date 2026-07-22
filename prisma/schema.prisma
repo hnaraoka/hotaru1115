@@ -35,18 +35,21 @@ enum ReviewStatus {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  loginId           String    @unique
-  passwordHash      String
-  passwordChangedAt DateTime  @default(now()) // パスワード変更/再発行時刻より前に発行されたセッションを無効化するために使用
-  name              String
-  role              Role      @default(USER)
-  email             String?
-  isActive          Boolean   @default(true)
-  failedLoginCount  Int       @default(0)
-  lastFailedAt      DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  loginId            String    @unique
+  passwordHash       String
+  passwordChangedAt  DateTime  @default(now()) // パスワード変更/再発行時刻より前に発行されたセッションを無効化するために使用
+  name               String
+  role               Role      @default(USER)
+  email              String?
+  isActive           Boolean   @default(true)
+  failedLoginCount   Int       @default(0)
+  lastFailedAt       DateTime?
+  birthDate          DateTime? // 生年月日（ユーザー作成時に管理者が登録。月次報告書の年齢を自動計算するために使用）
+  engineerStartYear  Int? // エンジニアとしてのキャリア開始年（初回の月次報告書作成時に本人が入力）
+  engineerStartMonth Int? // エンジニアとしてのキャリア開始月
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   reports              Report[]
   notificationsAboutMe Notification[]       @relation("NotificationRelatedUser")
