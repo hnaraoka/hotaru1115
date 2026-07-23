@@ -346,7 +346,7 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
         <View style={styles.table}>
           <Row>
             <LabelCell width={PERIOD_LABEL_WIDTH + PERIOD_VALUE_WIDTH}>期間</LabelCell>
-            <LabelCell flex={1}>プロジェクト名／作業内容</LabelCell>
+            <LabelCell flex={1}>プロジェクト名</LabelCell>
             <LabelCell width={devColTotalWidth}>開発工程</LabelCell>
           </Row>
           <Row style={{ borderBottom: "none" }}>
@@ -355,10 +355,6 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
                 width: PERIOD_LABEL_WIDTH + PERIOD_VALUE_WIDTH,
                 borderRight: BORDER,
                 paddingVertical: 8,
-                // flex-start (not space-between) so this stays anchored near
-                // the top instead of stretching out when the neighboring
-                // work-content cell wraps to many lines and grows the row
-                // much taller than this cell's own short content needs.
                 justifyContent: "flex-start",
                 alignItems: "center",
                 gap: 6,
@@ -374,11 +370,10 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
               )}
             </View>
 
-            <View style={{ flex: 1, borderRight: BORDER, padding: 5 }}>
-              <Text style={{ fontWeight: "bold", fontSize: 8.5, marginBottom: 4, textAlign: "center" }}>
+            <View style={{ flex: 1, borderRight: BORDER, padding: 5, justifyContent: "center" }}>
+              <Text style={{ fontWeight: "bold", fontSize: 8.5, textAlign: "center" }}>
                 {report.projectName}
               </Text>
-              <Text style={styles.bodyText}>{report.workContent}</Text>
             </View>
 
             <View style={{ width: devColTotalWidth, flexDirection: "row" }}>
@@ -406,6 +401,13 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
                   </View>
                 );
               })}
+            </View>
+          </Row>
+
+          {/* 作業内容: 列分割なしの全幅行。長文でもこの行だけが伸び、期間・開発工程の高さには影響しない */}
+          <Row style={{ borderTop: BORDER, borderBottom: "none" }}>
+            <View style={{ flex: 1, padding: 5 }}>
+              <Text style={styles.bodyText}>{report.workContent}</Text>
             </View>
           </Row>
         </View>
