@@ -10,13 +10,21 @@ import { computeReviewFlags } from "@/lib/reportFlags";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-export default async function ReportDetailPage({ params }: Props) {
+export default async function ReportDetailPage({ params, searchParams }: Props) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
   const { id } = await params;
+  const { from, year, month } = await searchParams;
+  const backLink =
+    from === "status"
+      ? { href: `/admin/status?year=${year}&month=${month}`, label: "← 提出状況に戻る" }
+      : { href: "/", label: "← 一覧に戻る" };
   const report = await prisma.report.findUnique({
     where: { id },
     include: { techStackItems: true, workAllocations: true, user: { select: { name: true } } },
@@ -35,8 +43,8 @@ export default async function ReportDetailPage({ params }: Props) {
 
   return (
     <>
-      <Link href="/" className="back-link">
-        ← 一覧に戻る
+      <Link href={backLink.href} className="back-link">
+        {backLink.label}
       </Link>
 
       <div className="detail-header">

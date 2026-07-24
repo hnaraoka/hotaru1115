@@ -20,6 +20,7 @@ type ResultRow = {
   birthDate: string | null;
   workType: "ENGINEER" | "OFFICE";
   success: boolean;
+  action: "created" | "updated";
   initialPassword?: string;
   error?: string;
 };
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     const birthDateInput = typeof r.birthDate === "string" ? r.birthDate.trim() : "";
     const workType = parseWorkType(r.workType);
 
-    if (!loginId || !name) {
+    const fail = (error: string, action: ResultRow["action"] = "created") =>
       results.push({
         loginId,
         name,
@@ -62,65 +63,45 @@ export async function POST(request: NextRequest) {
         birthDate: birthDateInput || null,
         workType,
         success: false,
-        error: "ログインIDと氏名は必須です",
+        action,
+        error,
       });
+
+    if (!loginId || !name) {
+      fail("ログインIDと氏名は必須です");
       continue;
     }
     if (seenLoginIds.has(loginId)) {
-      results.push({
-        loginId,
-        name,
-        role,
-        email,
-        birthDate: birthDateInput || null,
-        workType,
-        success: false,
-        error: "CSV内でログインIDが重複しています",
-      });
+      fail("CSV内でログインIDが重複しています");
       continue;
     }
     seenLoginIds.add(loginId);
 
     if (birthDateInput === "") {
-      results.push({
-        loginId,
-        name,
-        role,
-        email,
-        birthDate: null,
-        workType,
-        success: false,
-        error: "生年月日は必須です",
-      });
+      fail("生年月日は必須です");
       continue;
     }
     const birthDate = new Date(birthDateInput);
     if (Number.isNaN(birthDate.getTime())) {
-      results.push({
-        loginId,
-        name,
-        role,
-        email,
-        birthDate: birthDateInput,
-        workType,
-        success: false,
-        error: "生年月日の指定が正しくありません",
-      });
+      fail("生年月日の指定が正しくありません");
       continue;
     }
 
+    // ログインIDが既存ユーザーと一致する行は情報を更新し(パスワードは変更しない)、
+    // 一致しない行は初期パスワードを発行して新規作成する。
     const existing = await prisma.user.findUnique({ where: { loginId } });
+    const action: "created" | "updated" = existing ? "updated" : "created";
+
     if (existing) {
-      results.push({
-        loginId,
-        name,
-        role,
-        email,
-        birthDate: birthDateInput,
-        workType,
-        success: false,
-        error: "このログインIDは既に使用されています",
-      });
+      try {
+        await prisma.user.update({
+          where: { loginId },
+          data: { name, role, email, birthDate, workType },
+        });
+        results.push({ loginId, name, role, email, birthDate: birthDateInput, workType, success: true, action });
+      } catch {
+        fail("更新に失敗しました", action);
+      }
       continue;
     }
 
@@ -137,19 +118,11 @@ export async function POST(request: NextRequest) {
         birthDate: birthDateInput,
         workType,
         success: true,
+        action,
         initialPassword,
       });
     } catch {
-      results.push({
-        loginId,
-        name,
-        role,
-        email,
-        birthDate: birthDateInput,
-        workType,
-        success: false,
-        error: "作成に失敗しました",
-      });
+      fail("作成に失敗しました", action);
     }
   }
 

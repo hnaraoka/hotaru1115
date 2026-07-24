@@ -140,7 +140,10 @@ export default async function AdminStatusPage({ searchParams }: Props) {
           return (
             <li key={u.id}>
               {report ? (
-                <Link href={`/reports/${report.id}`} className="report-item">
+                <Link
+                  href={`/reports/${report.id}?from=status&year=${targetYear}&month=${targetMonth}`}
+                  className="report-item"
+                >
                   <div className="report-item-top">
                     <span className="report-item-title">{u.name}</span>
                     <span style={{ display: "flex", gap: 6 }}>
