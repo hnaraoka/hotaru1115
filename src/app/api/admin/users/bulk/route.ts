@@ -3,13 +3,20 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/requireAdmin";
 import { generateInitialPassword, hashPassword } from "@/lib/password";
 
-type InputRow = { loginId: string; name: string; role: "ADMIN" | "USER"; email: string | null };
+type InputRow = {
+  loginId: string;
+  name: string;
+  role: "ADMIN" | "USER";
+  email: string | null;
+  birthDate: string | null;
+};
 
 type ResultRow = {
   loginId: string;
   name: string;
   role: "ADMIN" | "USER";
   email: string | null;
+  birthDate: string | null;
   success: boolean;
   initialPassword?: string;
   error?: string;
@@ -37,31 +44,74 @@ export async function POST(request: NextRequest) {
     const name = typeof r.name === "string" ? r.name.trim() : "";
     const role: "ADMIN" | "USER" = r.role === "ADMIN" ? "ADMIN" : "USER";
     const email = typeof r.email === "string" && r.email.trim() !== "" ? r.email.trim() : null;
+    const birthDateInput = typeof r.birthDate === "string" ? r.birthDate.trim() : "";
 
     if (!loginId || !name) {
-      results.push({ loginId, name, role, email, success: false, error: "ログインIDと氏名は必須です" });
+      results.push({ loginId, name, role, email, birthDate: birthDateInput || null, success: false, error: "ログインIDと氏名は必須です" });
       continue;
     }
     if (seenLoginIds.has(loginId)) {
-      results.push({ loginId, name, role, email, success: false, error: "CSV内でログインIDが重複しています" });
+      results.push({
+        loginId,
+        name,
+        role,
+        email,
+        birthDate: birthDateInput || null,
+        success: false,
+        error: "CSV内でログインIDが重複しています",
+      });
       continue;
     }
     seenLoginIds.add(loginId);
 
+    let birthDate: Date | null = null;
+    if (birthDateInput !== "") {
+      const parsed = new Date(birthDateInput);
+      if (Number.isNaN(parsed.getTime())) {
+        results.push({
+          loginId,
+          name,
+          role,
+          email,
+          birthDate: birthDateInput,
+          success: false,
+          error: "生年月日の指定が正しくありません",
+        });
+        continue;
+      }
+      birthDate = parsed;
+    }
+
     const existing = await prisma.user.findUnique({ where: { loginId } });
     if (existing) {
-      results.push({ loginId, name, role, email, success: false, error: "このログインIDは既に使用されています" });
+      results.push({
+        loginId,
+        name,
+        role,
+        email,
+        birthDate: birthDateInput || null,
+        success: false,
+        error: "このログインIDは既に使用されています",
+      });
       continue;
     }
 
     const initialPassword = generateInitialPassword();
     try {
       await prisma.user.create({
-        data: { loginId, name, role, email, passwordHash: await hashPassword(initialPassword) },
+        data: { loginId, name, role, email, birthDate, passwordHash: await hashPassword(initialPassword) },
       });
-      results.push({ loginId, name, role, email, success: true, initialPassword });
+      results.push({ loginId, name, role, email, birthDate: birthDateInput || null, success: true, initialPassword });
     } catch {
-      results.push({ loginId, name, role, email, success: false, error: "作成に失敗しました" });
+      results.push({
+        loginId,
+        name,
+        role,
+        email,
+        birthDate: birthDateInput || null,
+        success: false,
+        error: "作成に失敗しました",
+      });
     }
   }
 
