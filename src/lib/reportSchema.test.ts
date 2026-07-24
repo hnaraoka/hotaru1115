@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { reportInputSchema } from "@/lib/reportSchema";
+import { buildReportInputSchema } from "@/lib/reportSchema";
+
+const reportInputSchema = buildReportInputSchema(true);
 
 function baseInput(overrides: Record<string, unknown> = {}) {
   return {
@@ -109,5 +111,17 @@ describe("reportInputSchema", () => {
   it("rejects an invalid rating enum value", () => {
     const result = reportInputSchema.safeParse(baseInput({ condition: "VERY_GOOD" }));
     expect(result.success).toBe(false);
+  });
+});
+
+describe("buildReportInputSchema(false) — devProcesses not required (内勤)", () => {
+  it("accepts an empty devProcesses selection", () => {
+    const result = buildReportInputSchema(false).safeParse(baseInput({ devProcesses: [] }));
+    expect(result.success).toBe(true);
+  });
+
+  it("still accepts a non-empty devProcesses selection", () => {
+    const result = buildReportInputSchema(false).safeParse(baseInput({ devProcesses: ["製造"] }));
+    expect(result.success).toBe(true);
   });
 });

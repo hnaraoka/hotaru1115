@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserSession } from "@/lib/requireUser";
-import { reportInputSchema } from "@/lib/reportSchema";
+import { buildReportInputSchema } from "@/lib/reportSchema";
 import { toReportCreateData } from "@/lib/reportData";
 import { isUniqueConstraintError } from "@/lib/prismaErrors";
 
@@ -20,8 +20,13 @@ export async function POST(request: NextRequest) {
   const session = await requireUserSession();
   if (!session) return NextResponse.json({ error: "ログインしてください" }, { status: 401 });
 
+  const actingUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { workType: true },
+  });
+
   const body = await request.json();
-  const parsed = reportInputSchema.safeParse(body);
+  const parsed = buildReportInputSchema(actingUser?.workType !== "OFFICE").safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "入力内容に誤りがあります", issues: parsed.error.issues },

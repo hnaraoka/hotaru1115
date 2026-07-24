@@ -13,7 +13,12 @@ beforeEach(() => {
   );
 });
 
-const noPersonalData = { birthDate: null, engineerStartYear: null, engineerStartMonth: null };
+const noPersonalData = {
+  birthDate: null,
+  engineerStartYear: null,
+  engineerStartMonth: null,
+  workType: "ENGINEER" as const,
+};
 
 describe("ReportForm (new report)", () => {
   it("renders every section without crashing", async () => {
@@ -79,6 +84,7 @@ describe("ReportForm (new report)", () => {
         birthDate={new Date("1990-04-15T00:00:00Z")}
         engineerStartYear={2020}
         engineerStartMonth={4}
+        workType="ENGINEER"
       />,
     );
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/reports/latest"));

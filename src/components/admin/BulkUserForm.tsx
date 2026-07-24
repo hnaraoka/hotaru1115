@@ -5,6 +5,7 @@ import Link from "next/link";
 import { parseCsv, toCsv } from "@/lib/csv";
 import { SimpleTable } from "@/components/SimpleTable";
 import { CopyTextButton } from "@/components/admin/CopyTextButton";
+import { WORK_TYPE_OPTIONS } from "@/lib/constants";
 
 type PreviewRow = {
   loginId: string;
@@ -12,14 +13,23 @@ type PreviewRow = {
   role: "ADMIN" | "USER";
   email: string | null;
   birthDate: string | null;
+  workType: "ENGINEER" | "OFFICE";
 };
 type ResultRow = PreviewRow & { success: boolean; initialPassword?: string; error?: string };
 
 const ROLE_LABEL: Record<"ADMIN" | "USER", string> = { ADMIN: "管理者", USER: "一般" };
+const WORK_TYPE_LABEL: Record<"ENGINEER" | "OFFICE", string> = Object.fromEntries(
+  WORK_TYPE_OPTIONS.map((o) => [o.value, o.label]),
+) as Record<"ENGINEER" | "OFFICE", string>;
 
 function parseRole(value: string): "ADMIN" | "USER" {
   const trimmed = value.trim();
   return trimmed === "管理者" || trimmed.toUpperCase() === "ADMIN" ? "ADMIN" : "USER";
+}
+
+function parseWorkType(value: string): "ENGINEER" | "OFFICE" {
+  const trimmed = value.trim();
+  return trimmed === "内勤" || trimmed.toUpperCase() === "OFFICE" ? "OFFICE" : "ENGINEER";
 }
 
 function looksLikeHeader(row: string[]): boolean {
@@ -28,9 +38,9 @@ function looksLikeHeader(row: string[]): boolean {
 }
 
 const TEMPLATE_CSV = toCsv([
-  ["ログインID", "氏名", "権限", "メールアドレス", "生年月日"],
-  ["yamada.taro", "山田 太郎", "一般", "", "1990-05-10"],
-  ["sato.hanako", "佐藤 花子", "管理者", "sato@example.com", ""],
+  ["ログインID", "氏名", "権限", "メールアドレス", "生年月日", "業務"],
+  ["yamada.taro", "山田 太郎", "一般", "", "1990-05-10", "エンジニア"],
+  ["sato.hanako", "佐藤 花子", "管理者", "sato@example.com", "1985-11-02", "内勤"],
 ]);
 
 function accountCreatedMessage(r: ResultRow): string {
@@ -75,6 +85,7 @@ export function BulkUserForm() {
           role: parseRole(r[2] ?? ""),
           email: (r[3] ?? "").trim() || null,
           birthDate: (r[4] ?? "").trim() || null,
+          workType: parseWorkType(r[5] ?? ""),
         }));
 
       if (parsed.length === 0) {
@@ -170,7 +181,7 @@ export function BulkUserForm() {
     <div className="form" style={{ gap: 16 }}>
       <p className="hint" style={{ margin: 0 }}>
         1行目はヘッダーとして扱われます。列の順番は「ログインID,
-        氏名, 権限(管理者/一般), メールアドレス(任意), 生年月日(任意、YYYY-MM-DD)」です。生年月日は月次報告書の年齢自動計算に使用されます。
+        氏名, 権限(管理者/一般), メールアドレス(任意), 生年月日(YYYY-MM-DD), 業務(エンジニア/内勤)」です。生年月日は必須で、月次報告書の年齢自動計算に使用されます。業務が空欄・不正な値の場合は「エンジニア」として登録されます。
       </p>
       <div className="form-actions" style={{ justifyContent: "flex-start" }}>
         <button
@@ -202,7 +213,7 @@ export function BulkUserForm() {
       {preview.length > 0 && (
         <>
           <SimpleTable
-            columns={["ログインID", "氏名", "権限", "メールアドレス", "生年月日"]}
+            columns={["ログインID", "氏名", "権限", "メールアドレス", "生年月日", "業務"]}
             rows={preview.map((row, i) => ({
               key: i,
               cells: [
@@ -210,7 +221,8 @@ export function BulkUserForm() {
                 row.name || <em key="name">未入力</em>,
                 ROLE_LABEL[row.role],
                 row.email ?? "",
-                row.birthDate ?? "",
+                row.birthDate ?? <em key="birthDate">未入力</em>,
+                WORK_TYPE_LABEL[row.workType],
               ],
             }))}
           />

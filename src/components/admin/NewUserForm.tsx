@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { WORK_TYPE_OPTIONS } from "@/lib/constants";
 
 export function NewUserForm() {
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +23,7 @@ export function NewUserForm() {
       role: formData.get("role"),
       email: formData.get("email"),
       birthDate: formData.get("birthDate") || null,
+      workType: formData.get("workType"),
     };
 
     const res = await fetch("/api/admin/users", {
@@ -97,11 +99,23 @@ export function NewUserForm() {
         </div>
       </div>
 
-      <div className="field">
-        <label htmlFor="birthDate">
-          生年月日 <span className="hint">(月次報告書の年齢を自動計算するために使用します。任意)</span>
-        </label>
-        <input id="birthDate" name="birthDate" type="date" />
+      <div className="form-row">
+        <div className="field">
+          <label htmlFor="birthDate">
+            生年月日 * <span className="hint">(月次報告書の年齢を自動計算するために使用します)</span>
+          </label>
+          <input id="birthDate" name="birthDate" type="date" required />
+        </div>
+        <div className="field">
+          <label htmlFor="workType">業務 *</label>
+          <select id="workType" name="workType" defaultValue="ENGINEER" required>
+            {WORK_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="form-actions">

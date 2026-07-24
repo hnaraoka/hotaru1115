@@ -32,18 +32,19 @@ export async function POST(request: NextRequest) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
   const role = body.role === "ADMIN" ? "ADMIN" : "USER";
   const email = typeof body.email === "string" && body.email.trim() !== "" ? body.email.trim() : null;
+  const workType = body.workType === "OFFICE" ? "OFFICE" : "ENGINEER";
 
   if (!loginId || !name) {
     return NextResponse.json({ error: "ログインIDと氏名は必須です" }, { status: 400 });
   }
 
-  let birthDate: Date | null = null;
-  if (typeof body.birthDate === "string" && body.birthDate.trim() !== "") {
-    const parsed = new Date(body.birthDate);
-    if (Number.isNaN(parsed.getTime())) {
-      return NextResponse.json({ error: "生年月日の指定が正しくありません" }, { status: 400 });
-    }
-    birthDate = parsed;
+  const birthDateInput = typeof body.birthDate === "string" ? body.birthDate.trim() : "";
+  if (birthDateInput === "") {
+    return NextResponse.json({ error: "生年月日は必須です" }, { status: 400 });
+  }
+  const birthDate = new Date(birthDateInput);
+  if (Number.isNaN(birthDate.getTime())) {
+    return NextResponse.json({ error: "生年月日の指定が正しくありません" }, { status: 400 });
   }
 
   const existing = await prisma.user.findUnique({ where: { loginId } });
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
   const passwordHash = await hashPassword(initialPassword);
 
   const user = await prisma.user.create({
-    data: { loginId, name, role, email, birthDate, passwordHash },
+    data: { loginId, name, role, email, birthDate, workType, passwordHash },
     select: { id: true, loginId: true, name: true, role: true, email: true },
   });
 

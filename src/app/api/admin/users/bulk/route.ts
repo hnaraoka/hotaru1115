@@ -9,6 +9,7 @@ type InputRow = {
   role: "ADMIN" | "USER";
   email: string | null;
   birthDate: string | null;
+  workType: "ENGINEER" | "OFFICE";
 };
 
 type ResultRow = {
@@ -17,10 +18,15 @@ type ResultRow = {
   role: "ADMIN" | "USER";
   email: string | null;
   birthDate: string | null;
+  workType: "ENGINEER" | "OFFICE";
   success: boolean;
   initialPassword?: string;
   error?: string;
 };
+
+function parseWorkType(value: unknown): "ENGINEER" | "OFFICE" {
+  return value === "OFFICE" ? "OFFICE" : "ENGINEER";
+}
 
 export async function POST(request: NextRequest) {
   const session = await requireAdminSession();
@@ -45,9 +51,19 @@ export async function POST(request: NextRequest) {
     const role: "ADMIN" | "USER" = r.role === "ADMIN" ? "ADMIN" : "USER";
     const email = typeof r.email === "string" && r.email.trim() !== "" ? r.email.trim() : null;
     const birthDateInput = typeof r.birthDate === "string" ? r.birthDate.trim() : "";
+    const workType = parseWorkType(r.workType);
 
     if (!loginId || !name) {
-      results.push({ loginId, name, role, email, birthDate: birthDateInput || null, success: false, error: "ログインIDと氏名は必須です" });
+      results.push({
+        loginId,
+        name,
+        role,
+        email,
+        birthDate: birthDateInput || null,
+        workType,
+        success: false,
+        error: "ログインIDと氏名は必須です",
+      });
       continue;
     }
     if (seenLoginIds.has(loginId)) {
@@ -57,6 +73,7 @@ export async function POST(request: NextRequest) {
         role,
         email,
         birthDate: birthDateInput || null,
+        workType,
         success: false,
         error: "CSV内でログインIDが重複しています",
       });
@@ -64,22 +81,32 @@ export async function POST(request: NextRequest) {
     }
     seenLoginIds.add(loginId);
 
-    let birthDate: Date | null = null;
-    if (birthDateInput !== "") {
-      const parsed = new Date(birthDateInput);
-      if (Number.isNaN(parsed.getTime())) {
-        results.push({
-          loginId,
-          name,
-          role,
-          email,
-          birthDate: birthDateInput,
-          success: false,
-          error: "生年月日の指定が正しくありません",
-        });
-        continue;
-      }
-      birthDate = parsed;
+    if (birthDateInput === "") {
+      results.push({
+        loginId,
+        name,
+        role,
+        email,
+        birthDate: null,
+        workType,
+        success: false,
+        error: "生年月日は必須です",
+      });
+      continue;
+    }
+    const birthDate = new Date(birthDateInput);
+    if (Number.isNaN(birthDate.getTime())) {
+      results.push({
+        loginId,
+        name,
+        role,
+        email,
+        birthDate: birthDateInput,
+        workType,
+        success: false,
+        error: "生年月日の指定が正しくありません",
+      });
+      continue;
     }
 
     const existing = await prisma.user.findUnique({ where: { loginId } });
@@ -89,7 +116,8 @@ export async function POST(request: NextRequest) {
         name,
         role,
         email,
-        birthDate: birthDateInput || null,
+        birthDate: birthDateInput,
+        workType,
         success: false,
         error: "このログインIDは既に使用されています",
       });
@@ -99,16 +127,26 @@ export async function POST(request: NextRequest) {
     const initialPassword = generateInitialPassword();
     try {
       await prisma.user.create({
-        data: { loginId, name, role, email, birthDate, passwordHash: await hashPassword(initialPassword) },
+        data: { loginId, name, role, email, birthDate, workType, passwordHash: await hashPassword(initialPassword) },
       });
-      results.push({ loginId, name, role, email, birthDate: birthDateInput || null, success: true, initialPassword });
+      results.push({
+        loginId,
+        name,
+        role,
+        email,
+        birthDate: birthDateInput,
+        workType,
+        success: true,
+        initialPassword,
+      });
     } catch {
       results.push({
         loginId,
         name,
         role,
         email,
-        birthDate: birthDateInput || null,
+        birthDate: birthDateInput,
+        workType,
         success: false,
         error: "作成に失敗しました",
       });

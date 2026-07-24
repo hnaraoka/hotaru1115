@@ -191,11 +191,12 @@ function chunk<T>(items: T[], size: number): T[][] {
 type ReportWithRelations = Report & {
   techStackItems: TechStackItem[];
   workAllocations: WorkAllocation[];
-  user: Pick<User, "name">;
+  user: Pick<User, "name" | "workType">;
 };
 
 export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
   const submittedAt = new Date(report.submittedAt).toLocaleDateString("ja-JP");
+  const isOfficeWork = report.user.workType === "OFFICE";
 
   const periodStart =
     report.projectPeriodStartYear && report.projectPeriodStartMonth
@@ -396,7 +397,11 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
                       ))}
                     </View>
                     <View style={{ alignItems: "center", justifyContent: "flex-start", marginTop: 6 }}>
-                      {active && <Text style={{ fontSize: 9, color: "#0b5c1f" }}>○</Text>}
+                      {isOfficeWork ? (
+                        <Text style={{ fontSize: 9, color: "#999999" }}>-</Text>
+                      ) : (
+                        active && <Text style={{ fontSize: 9, color: "#0b5c1f" }}>○</Text>
+                      )}
                     </View>
                   </View>
                 );
