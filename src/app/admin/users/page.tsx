@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireAdminPageSession } from "@/lib/requireAdminPage";
+import { ExportUsersCsvButton } from "@/components/admin/ExportUsersCsvButton";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,16 @@ export default async function AdminUsersPage() {
           <p>ログインID・パスワードの発行や権限の変更ができます。</p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <ExportUsersCsvButton
+            users={users.map((u) => ({
+              loginId: u.loginId,
+              name: u.name,
+              birthDate: u.birthDate,
+              workType: u.workType,
+              email: u.email,
+              role: u.role,
+            }))}
+          />
           <Link href="/admin/users/bulk" className="btn btn-secondary">
             CSVで一括登録
           </Link>

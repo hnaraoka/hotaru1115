@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { parseCsv, toCsv } from "@/lib/csv";
+import { parseCsv, toCsv, downloadCsv } from "@/lib/csv";
 import { SimpleTable } from "@/components/SimpleTable";
 import { CopyTextButton } from "@/components/admin/CopyTextButton";
 import { WORK_TYPE_OPTIONS } from "@/lib/constants";
+import { USER_CSV_HEADER } from "@/lib/adminUserCsv";
 
 type PreviewRow = {
   loginId: string;
@@ -15,9 +16,15 @@ type PreviewRow = {
   birthDate: string | null;
   workType: "ENGINEER" | "OFFICE";
 };
-type ResultRow = PreviewRow & { success: boolean; initialPassword?: string; error?: string };
+type ResultRow = PreviewRow & {
+  success: boolean;
+  action: "created" | "updated";
+  initialPassword?: string;
+  error?: string;
+};
 
 const ROLE_LABEL: Record<"ADMIN" | "USER", string> = { ADMIN: "管理者", USER: "一般" };
+const ACTION_LABEL: Record<"created" | "updated", string> = { created: "新規作成", updated: "更新" };
 const WORK_TYPE_LABEL: Record<"ENGINEER" | "OFFICE", string> = Object.fromEntries(
   WORK_TYPE_OPTIONS.map((o) => [o.value, o.label]),
 ) as Record<"ENGINEER" | "OFFICE", string>;
@@ -38,23 +45,13 @@ function looksLikeHeader(row: string[]): boolean {
 }
 
 const TEMPLATE_CSV = toCsv([
-  ["ログインID", "氏名", "生年月日", "業務", "メールアドレス", "権限"],
+  [...USER_CSV_HEADER],
   ["yamada.taro", "山田 太郎", "1990-05-10", "エンジニア", "", "一般"],
   ["sato.hanako", "佐藤 花子", "1985-11-02", "内勤", "sato@example.com", "管理者"],
 ]);
 
 function accountCreatedMessage(r: ResultRow): string {
   return `${r.name}さん\nアカウントを登録しました。\n\nログインID: ${r.loginId}\n初期パスワード: ${r.initialPassword}\n\n次回ログイン後、必要であればパスワードを変更してください。`;
-}
-
-function downloadCsv(filename: string, content: string) {
-  const blob = new Blob([`﻿${content}`], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export function BulkUserForm() {
@@ -121,13 +118,14 @@ export function BulkUserForm() {
   function handleDownloadResults() {
     if (!results) return;
     const rows = [
-      ["ログインID", "氏名", "権限", "初期パスワード", "結果"],
+      ["ログインID", "氏名", "権限", "処理", "初期パスワード", "結果"],
       ...results.map((r) => [
         r.loginId,
         r.name,
         ROLE_LABEL[r.role],
+        ACTION_LABEL[r.action],
         r.success ? (r.initialPassword ?? "") : "",
-        r.success ? "作成成功" : `作成失敗: ${r.error ?? ""}`,
+        r.success ? "成功" : `失敗: ${r.error ?? ""}`,
       ]),
     ];
     downloadCsv("ユーザー一括登録結果.csv", toCsv(rows));
@@ -141,14 +139,15 @@ export function BulkUserForm() {
           {results.length}件中 <strong>{successCount}件成功</strong> / {results.length - successCount}件失敗
         </p>
         <SimpleTable
-          columns={["ログインID", "氏名", "権限", "初期パスワード", "結果", "連携"]}
+          columns={["ログインID", "氏名", "権限", "処理", "初期パスワード", "結果", "連携"]}
           rows={results.map((r, i) => ({
             key: i,
             cells: [
               r.loginId,
               r.name,
               ROLE_LABEL[r.role],
-              r.success ? r.initialPassword : "-",
+              ACTION_LABEL[r.action],
+              r.success ? r.initialPassword ?? "-" : "-",
               <span key="result" style={{ color: r.success ? "var(--success)" : "var(--danger)" }}>
                 {r.success ? "成功" : `失敗: ${r.error}`}
               </span>,
@@ -161,7 +160,7 @@ export function BulkUserForm() {
           }))}
         />
         <p className="hint">
-          初期パスワードはこの画面を離れると再表示できません。CSVでダウンロードするか、各ユーザーへ安全な方法で伝達してください。
+          新規作成分の初期パスワードはこの画面を離れると再表示できません。CSVでダウンロードするか、各ユーザーへ安全な方法で伝達してください(更新分はパスワードを変更していません)。
         </p>
         <div className="form-actions">
           <Link href="/admin/users" className="btn btn-secondary">
@@ -181,7 +180,7 @@ export function BulkUserForm() {
     <div className="form" style={{ gap: 16 }}>
       <p className="hint" style={{ margin: 0 }}>
         1行目はヘッダーとして扱われます。列の順番は「ログインID,
-        氏名, 生年月日(YYYY-MM-DD), 業務(エンジニア/内勤), メールアドレス(任意), 権限(管理者/一般)」です。生年月日は必須で、月次報告書の年齢自動計算に使用されます。業務が空欄・不正な値の場合は「エンジニア」として登録されます。
+        氏名, 生年月日(YYYY-MM-DD), 業務(エンジニア/内勤), メールアドレス(任意), 権限(管理者/一般)」です。生年月日は必須で、月次報告書の年齢自動計算に使用されます。業務が空欄・不正な値の場合は「エンジニア」として登録されます。ログインIDが既存ユーザーと一致する行は情報を更新し、一致しない行は新規作成します。
       </p>
       <div className="form-actions" style={{ justifyContent: "flex-start" }}>
         <button
@@ -231,7 +230,7 @@ export function BulkUserForm() {
               キャンセル
             </Link>
             <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? "作成中..." : `この${preview.length}件を作成する`}
+              {submitting ? "登録中..." : `この${preview.length}件を登録する`}
             </button>
           </div>
         </>
