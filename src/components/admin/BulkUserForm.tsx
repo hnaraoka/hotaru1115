@@ -6,7 +6,13 @@ import { parseCsv, toCsv } from "@/lib/csv";
 import { SimpleTable } from "@/components/SimpleTable";
 import { CopyTextButton } from "@/components/admin/CopyTextButton";
 
-type PreviewRow = { loginId: string; name: string; role: "ADMIN" | "USER"; email: string | null };
+type PreviewRow = {
+  loginId: string;
+  name: string;
+  role: "ADMIN" | "USER";
+  email: string | null;
+  birthDate: string | null;
+};
 type ResultRow = PreviewRow & { success: boolean; initialPassword?: string; error?: string };
 
 const ROLE_LABEL: Record<"ADMIN" | "USER", string> = { ADMIN: "管理者", USER: "一般" };
@@ -22,9 +28,9 @@ function looksLikeHeader(row: string[]): boolean {
 }
 
 const TEMPLATE_CSV = toCsv([
-  ["ログインID", "氏名", "権限", "メールアドレス"],
-  ["yamada.taro", "山田 太郎", "一般", ""],
-  ["sato.hanako", "佐藤 花子", "管理者", "sato@example.com"],
+  ["ログインID", "氏名", "権限", "メールアドレス", "生年月日"],
+  ["yamada.taro", "山田 太郎", "一般", "", "1990-05-10"],
+  ["sato.hanako", "佐藤 花子", "管理者", "sato@example.com", ""],
 ]);
 
 function accountCreatedMessage(r: ResultRow): string {
@@ -68,6 +74,7 @@ export function BulkUserForm() {
           name: (r[1] ?? "").trim(),
           role: parseRole(r[2] ?? ""),
           email: (r[3] ?? "").trim() || null,
+          birthDate: (r[4] ?? "").trim() || null,
         }));
 
       if (parsed.length === 0) {
@@ -162,7 +169,8 @@ export function BulkUserForm() {
   return (
     <div className="form" style={{ gap: 16 }}>
       <p className="hint" style={{ margin: 0 }}>
-        1行目はヘッダーとして扱われます。列の順番は「ログインID, 氏名, 権限(管理者/一般), メールアドレス(任意)」です。
+        1行目はヘッダーとして扱われます。列の順番は「ログインID,
+        氏名, 権限(管理者/一般), メールアドレス(任意), 生年月日(任意、YYYY-MM-DD)」です。生年月日は月次報告書の年齢自動計算に使用されます。
       </p>
       <div className="form-actions" style={{ justifyContent: "flex-start" }}>
         <button
@@ -194,7 +202,7 @@ export function BulkUserForm() {
       {preview.length > 0 && (
         <>
           <SimpleTable
-            columns={["ログインID", "氏名", "権限", "メールアドレス"]}
+            columns={["ログインID", "氏名", "権限", "メールアドレス", "生年月日"]}
             rows={preview.map((row, i) => ({
               key: i,
               cells: [
@@ -202,6 +210,7 @@ export function BulkUserForm() {
                 row.name || <em key="name">未入力</em>,
                 ROLE_LABEL[row.role],
                 row.email ?? "",
+                row.birthDate ?? "",
               ],
             }))}
           />
