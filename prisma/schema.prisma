@@ -12,6 +12,11 @@ enum Role {
   USER
 }
 
+enum WorkType {
+  ENGINEER // エンジニア
+  OFFICE // 内勤
+}
+
 enum RatingLevel {
   EXCELLENT // 大変良い
   GOOD // 良い
@@ -41,6 +46,7 @@ model User {
   passwordChangedAt  DateTime  @default(now()) // パスワード変更/再発行時刻より前に発行されたセッションを無効化するために使用
   name               String
   role               Role      @default(USER)
+  workType           WorkType  @default(ENGINEER) // 業務区分（エンジニアは開発工程の入力が必須、内勤は不要）
   email              String?
   isActive           Boolean   @default(true)
   failedLoginCount   Int       @default(0)

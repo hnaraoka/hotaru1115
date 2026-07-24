@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Report, TechStackItem, WorkAllocation } from "@prisma/client";
-import { reportInputSchema, type ReportInput } from "@/lib/reportSchema";
+import { buildReportInputSchema, type ReportInput } from "@/lib/reportSchema";
 import { emptyTechStack, techStackItemsToRecord, techStackRecordToItems } from "@/lib/techStack";
 import { calculateAgeAsOf, calculateExperienceYears } from "@/lib/ageCalc";
 import type { ParsedReportFields } from "@/lib/pdfImport/parseLegacyReport";
@@ -179,12 +179,15 @@ export function ReportForm({
   birthDate,
   engineerStartYear,
   engineerStartMonth,
+  workType,
 }: {
   report?: ReportWithRelations;
   birthDate: Date | null;
   engineerStartYear: number | null;
   engineerStartMonth: number | null;
+  workType: "ENGINEER" | "OFFICE";
 }) {
+  const devProcessesRequired = workType !== "OFFICE";
   const router = useRouter();
   const isEdit = !!report;
   const [state, setState] = useState<FormState>(() => buildInitialState(report));
@@ -410,7 +413,7 @@ export function ReportForm({
     setSubmitError(null);
 
     const payload = buildPayload(state, computedAge, computedExperienceYears);
-    const parsed = reportInputSchema.safeParse(payload);
+    const parsed = buildReportInputSchema(devProcessesRequired).safeParse(payload);
     if (!parsed.success) {
       const nextFieldErrors: Record<string, string[]> = {};
       const nextFormErrors: string[] = [];
@@ -499,6 +502,7 @@ export function ReportForm({
         computedPeriodMonths={computedPeriodMonths}
         workContentReference={referenceContent.workContent}
         onCopyWorkContentReference={() => copyReference("workContent", referenceContent.workContent!)}
+        devProcessesRequired={devProcessesRequired}
       />
       <OutcomeSection {...sectionProps} referenceContent={referenceContent} onCopyReference={copyReference} />
       <SelfRatingSection {...sectionProps} />

@@ -20,6 +20,13 @@ export const TECH_CATEGORY_OPTIONS = [
 
 export type TechCategoryValue = (typeof TECH_CATEGORY_OPTIONS)[number]["value"];
 
+export const WORK_TYPE_OPTIONS = [
+  { value: "ENGINEER", label: "エンジニア" },
+  { value: "OFFICE", label: "内勤" },
+] as const;
+
+export type WorkTypeValue = (typeof WORK_TYPE_OPTIONS)[number]["value"];
+
 export const RATING_OPTIONS = [
   { value: "EXCELLENT", label: "大変良い" },
   { value: "GOOD", label: "良い" },

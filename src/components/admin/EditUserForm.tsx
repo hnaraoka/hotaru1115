@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CopyTextButton } from "@/components/admin/CopyTextButton";
-import { MONTH_OPTIONS } from "@/lib/constants";
+import { MONTH_OPTIONS, WORK_TYPE_OPTIONS } from "@/lib/constants";
 
 type UserData = {
   id: string;
@@ -15,6 +15,7 @@ type UserData = {
   birthDate: string;
   engineerStartYear: number | null;
   engineerStartMonth: number | null;
+  workType: "ENGINEER" | "OFFICE";
 };
 
 export function EditUserForm({ user, emailConfigured }: { user: UserData; emailConfigured: boolean }) {
@@ -56,6 +57,7 @@ export function EditUserForm({ user, emailConfigured }: { user: UserData; emailC
       email: formData.get("email"),
       isActive: formData.get("isActive") === "on",
       birthDate: formData.get("birthDate") || null,
+      workType: formData.get("workType"),
       engineerStartYear: engineerStartYear === "" ? null : Number(engineerStartYear),
       engineerStartMonth: engineerStartMonth === "" ? null : Number(engineerStartMonth),
     };
@@ -144,6 +146,20 @@ export function EditUserForm({ user, emailConfigured }: { user: UserData; emailC
               <option value="ADMIN">管理者</option>
             </select>
           </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor="workType">業務 *</label>
+          <select id="workType" name="workType" defaultValue={user.workType} required>
+            {WORK_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <span className="hint">
+            内勤の場合、月次報告書の開発工程は入力不要になります。
+          </span>
         </div>
 
         <div className="field">

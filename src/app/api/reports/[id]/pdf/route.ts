@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   const { id } = await params;
   const report = await prisma.report.findUnique({
     where: { id },
-    include: { techStackItems: true, workAllocations: true, user: { select: { name: true } } },
+    include: { techStackItems: true, workAllocations: true, user: { select: { name: true, workType: true } } },
   });
 
   if (!report) return NextResponse.json({ error: "報告書が見つかりません" }, { status: 404 });

@@ -34,6 +34,7 @@ export default async function EditUserPage({ params }: Props) {
           birthDate: user.birthDate ? user.birthDate.toISOString().slice(0, 10) : "",
           engineerStartYear: user.engineerStartYear,
           engineerStartMonth: user.engineerStartMonth,
+          workType: user.workType,
         }}
         emailConfigured={!!process.env.RESEND_API_KEY}
       />

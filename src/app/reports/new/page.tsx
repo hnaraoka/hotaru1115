@@ -13,7 +13,7 @@ export default async function NewReportPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { birthDate: true, engineerStartYear: true, engineerStartMonth: true },
+    select: { birthDate: true, engineerStartYear: true, engineerStartMonth: true, workType: true },
   });
 
   const needsEngineerStartDate = !user?.engineerStartYear || !user?.engineerStartMonth;
@@ -33,6 +33,7 @@ export default async function NewReportPage() {
           birthDate={user?.birthDate ?? null}
           engineerStartYear={user!.engineerStartYear}
           engineerStartMonth={user!.engineerStartMonth}
+          workType={user!.workType}
         />
       )}
     </>
