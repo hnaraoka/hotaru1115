@@ -1,4 +1,4 @@
-export const MAX_FAILED_LOGIN_ATTEMPTS = 3;
+export const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 export const LOGIN_LOCKOUT_MINUTES = 15;
 
 // How often an existing session re-confirms the account is still active
