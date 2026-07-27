@@ -31,7 +31,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "PDFの生成に失敗しました。時間をおいて再度お試しください。" }, { status: 500 });
   }
 
-  const fileName = `月次報告書_${report.targetYear}${String(report.targetMonth).padStart(2, "0")}.pdf`;
+  const fileName = `${report.targetYear}${String(report.targetMonth).padStart(2, "0")}度月次報告書_${report.user.name}.pdf`;
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

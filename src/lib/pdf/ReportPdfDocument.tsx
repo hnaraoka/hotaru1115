@@ -128,6 +128,14 @@ const DEV_PROCESS_PDF_LABELS: Record<string, string> = {
   "保守・運用": "保守運用",
 };
 
+// Labels are stacked one character per line (see DEV_COL_WIDTH usage below),
+// so a fixed height sized for the longest label keeps the "○" marker at the
+// same vertical position for every column regardless of the label's length.
+const DEV_LABEL_FONT_SIZE = 6.5;
+const DEV_LABEL_LINE_HEIGHT = 1.3;
+const DEV_LABEL_MAX_CHARS = Math.max(...Object.values(DEV_PROCESS_PDF_LABELS).map((label) => label.length));
+const DEV_LABEL_HEIGHT = DEV_LABEL_MAX_CHARS * DEV_LABEL_FONT_SIZE * DEV_LABEL_LINE_HEIGHT;
+
 // react-pdf's <View> cannot render raw text nodes directly — any string/number
 // (including the arrays JSX produces for `{a}年{b}月`-style interpolation) must
 // be wrapped in a <Text>. Only skip wrapping when the child is already a real
@@ -218,7 +226,9 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
   const devColTotalWidth = DEV_COL_WIDTH * DEV_PROCESS_OPTIONS.length;
 
   return (
-    <Document title={`月次報告書_${report.targetYear}${String(report.targetMonth).padStart(2, "0")}`}>
+    <Document
+      title={`${report.targetYear}${String(report.targetMonth).padStart(2, "0")}度月次報告書_${report.user.name}`}
+    >
       <Page size="A4" style={styles.page}>
         <View style={styles.titleRow}>
           <View style={styles.titleSpacer} />
@@ -228,32 +238,34 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
 
         {/* 提出者情報 */}
         <View style={styles.table}>
-          <Row>
+          <View style={{ flexDirection: "row" }}>
             <LabelCell width={55}>提出者</LabelCell>
             <ValueCell width={135} center>
               {report.user.name}
             </ValueCell>
-            <LabelCell width={45}>性別</LabelCell>
-            <LabelCell width={45}>年齢</LabelCell>
-            <LabelCell width={45}>対象月</LabelCell>
-            <ValueCell flex={1} last center>
-              {report.targetYear}年{report.targetMonth}月
-            </ValueCell>
-          </Row>
-          <Row style={{ borderBottom: "none" }}>
-            <LabelCell width={55}> </LabelCell>
-            <ValueCell width={135}> </ValueCell>
-            <ValueCell width={45} center>
-              {report.gender ?? "-"}
-            </ValueCell>
-            <ValueCell width={45} center>
-              {report.age !== null ? String(report.age) : "-"}
-            </ValueCell>
-            <LabelCell width={45}>経験年数</LabelCell>
-            <ValueCell flex={1} last center>
-              {report.experienceYears !== null ? `${report.experienceYears}年` : "-"}
-            </ValueCell>
-          </Row>
+            <View style={{ flex: 1 }}>
+              <Row>
+                <LabelCell width={45}>性別</LabelCell>
+                <LabelCell width={45}>年齢</LabelCell>
+                <LabelCell width={45}>対象月</LabelCell>
+                <ValueCell flex={1} last center>
+                  {report.targetYear}年{report.targetMonth}月
+                </ValueCell>
+              </Row>
+              <Row style={{ borderBottom: "none" }}>
+                <ValueCell width={45} center>
+                  {report.gender ?? "-"}
+                </ValueCell>
+                <ValueCell width={45} center>
+                  {report.age !== null ? String(report.age) : "-"}
+                </ValueCell>
+                <LabelCell width={45}>経験年数</LabelCell>
+                <ValueCell flex={1} last center>
+                  {report.experienceYears !== null ? `${report.experienceYears}年` : "-"}
+                </ValueCell>
+              </Row>
+            </View>
+          </View>
         </View>
 
         {/* 参画先・勤務 */}
@@ -344,7 +356,7 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
         </View>
 
         {/* プロジェクト */}
-        <View style={styles.table}>
+        <View style={styles.table} wrap={false}>
           <Row>
             <LabelCell width={PERIOD_LABEL_WIDTH + PERIOD_VALUE_WIDTH}>期間</LabelCell>
             <LabelCell flex={1}>プロジェクト名</LabelCell>
@@ -389,9 +401,12 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
                       borderRight: i === arr.length - 1 ? "none" : BORDER,
                     }}
                   >
-                    <View style={{ alignItems: "center", paddingTop: 3 }}>
+                    <View style={{ alignItems: "center", paddingTop: 3, height: DEV_LABEL_HEIGHT }}>
                       {chars.map((ch, ci) => (
-                        <Text key={ci} style={{ fontSize: 6.5, fontWeight: "bold", lineHeight: 1.3 }}>
+                        <Text
+                          key={ci}
+                          style={{ fontSize: DEV_LABEL_FONT_SIZE, fontWeight: "bold", lineHeight: DEV_LABEL_LINE_HEIGHT }}
+                        >
                           {ch}
                         </Text>
                       ))}
@@ -409,17 +424,18 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
             </View>
           </Row>
 
-          {/* 作業内容: 列分割なしの全幅行。長文でもこの行だけが伸び、期間・開発工程の高さには影響しない */}
+          {/* 作業内容: 長文でもこの行だけが伸び、期間・開発工程の高さには影響しない */}
           <Row style={{ borderTop: BORDER, borderBottom: "none" }}>
-            <View style={{ flex: 1, padding: 5 }}>
+            <LabelCell width={90}>作業内容</LabelCell>
+            <ValueCell flex={1} last>
               <Text style={styles.bodyText}>{report.workContent}</Text>
-            </View>
+            </ValueCell>
           </Row>
         </View>
 
         {/* 成果物・所感 */}
         {report.deliverables && (
-          <View style={styles.table}>
+          <View style={styles.table} wrap={false}>
             <Row style={{ borderBottom: "none" }}>
               <LabelCell width={90}>成果物</LabelCell>
               <ValueCell flex={1} last>
@@ -430,7 +446,7 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
         )}
 
         {report.troubles && (
-          <View style={styles.table}>
+          <View style={styles.table} wrap={false}>
             <Row style={{ borderBottom: "none" }}>
               <LabelCell width={90}>
                 今月の{"\n"}困った点と{"\n"}対応・解決方法
@@ -443,7 +459,7 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
         )}
 
         {report.goodPoints && (
-          <View style={styles.table}>
+          <View style={styles.table} wrap={false}>
             <Row style={{ borderBottom: "none" }}>
               <LabelCell width={90}>
                 今月の{"\n"}良かった点/{"\n"}改善提案など
@@ -456,7 +472,7 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
         )}
 
         {/* 自己評価 + 作業配分 */}
-        <View style={{ ...styles.table, flexDirection: "row" }}>
+        <View style={{ ...styles.table, flexDirection: "row" }} wrap={false}>
           <View style={{ width: PROJECT_LABEL_WIDTH + 130, borderRight: BORDER }}>
             {RATING_FIELDS.map(({ key, label }, i, arr) => (
               <View
