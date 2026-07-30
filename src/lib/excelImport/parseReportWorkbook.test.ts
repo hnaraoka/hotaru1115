@@ -176,6 +176,93 @@ describe("parseReportWorkbook", () => {
     expect(result.warnings).toContain("作業配分の項目が見つかりませんでした");
   });
 
+  it("dynamically shifts rows when an extra row is manually inserted into a 名称 category", () => {
+    // ソフトウェア/ツールに手作業で1行追加された想定（2行→3行）。名称テーブル
+    // より下のプロジェクト以降のセクションは、本来の行番号(27,28,31,34,35,
+    // 38,41,44,46,48,50,52,54,49)からすべて1行分下にずれる。
+    const cells: Record<string, string | number | Date> = {
+      B2: "2026年6月分 月次報告書",
+      Z4: new Date(Date.UTC(2026, 5, 1)),
+      Z5: "5年",
+      O5: "男性",
+      S5: 34,
+      G7: "テスト株式会社",
+      G8: "東京",
+      J9: 20,
+      Q9: 160,
+      X9: 15,
+      AE9: 5,
+
+      // 技術スタック(名称)の見出し。ソフトウェア/ツールのみ3行分。
+      B12: "言語",
+      B14: "FW",
+      B16: "DB",
+      B18: "ソフトウェア/ツール",
+      B21: "OS/クラウド/開発環境",
+      G12: "TypeScript",
+      N13: "JavaScript",
+      G14: "React",
+      G16: "PostgreSQL",
+      G18: "Git",
+      G19: "Docker",
+      G20: "WinSCP", // 追加された3行目
+      G21: "AWS", // OS_ENVは1行分下(21行目)にずれる
+
+      // 以降はすべて本来の行番号+1
+      B28: new Date(Date.UTC(2024, 3, 1)), // プロジェクト参画年月
+      G28: "テストプロジェクト",
+      G29: "設計・実装を担当しました",
+      B32: "現在",
+      B35: 27,
+      AD32: "〇", // DEV_PROCESS_COLUMNS[4] = 製造
+
+      G36: "成果物一式",
+      G39: "特に問題なし",
+      G42: "順調でした",
+
+      G45: "良い",
+      G47: "大変良い",
+      G49: "普通",
+      G51: "やや悪い",
+      G53: "良い",
+      G55: "悪い",
+
+      AL50: "実装",
+      AM50: 60,
+      AL51: "打ち合わせ",
+      AM51: 40,
+      AL52: "計",
+      AM52: 100,
+    };
+
+    const result = parseReportWorkbook(buildWorkbook(cells));
+
+    expect(result.techStack).toEqual({
+      LANGUAGE: ["TypeScript", "JavaScript"],
+      FRAMEWORK: ["React"],
+      DATABASE: ["PostgreSQL"],
+      TOOL: ["Git", "Docker", "WinSCP"],
+      OS_ENV: ["AWS"],
+    });
+
+    expect(result.projectPeriodStartYear).toBe("2024");
+    expect(result.projectPeriodStartMonth).toBe("4");
+    expect(result.projectName).toBe("テストプロジェクト");
+    expect(result.workContent).toBe("設計・実装を担当しました");
+    expect(result.projectPeriodOngoing).toBe(true);
+    expect(result.projectPeriodMonths).toBe("27");
+    expect(result.devProcesses).toEqual(["製造"]);
+    expect(result.deliverables).toBe("成果物一式");
+    expect(result.troubles).toBe("特に問題なし");
+    expect(result.goodPoints).toBe("順調でした");
+    expect(result.condition).toBe("GOOD");
+    expect(result.growth).toBe("BAD");
+    expect(result.workAllocations).toEqual([
+      { category: "実装", percentage: 60 },
+      { category: "打ち合わせ", percentage: 40 },
+    ]);
+  });
+
   it("falls back to the first worksheet when '職務経歴' is not present", () => {
     const result = parseReportWorkbook(buildWorkbook(fullReportCells(), "Sheet1"));
     expect(result.clientCompany).toBe("テスト株式会社");
