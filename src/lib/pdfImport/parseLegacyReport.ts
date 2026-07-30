@@ -258,6 +258,10 @@ export function parseLegacyReport(items: PdfTextItem[]): ParsedReportFields {
     ? Math.max(troublesLabel1.y, troublesLabel2?.y ?? troublesLabel1.y) + 12
     : undefined;
   const SECTION_GAP_THRESHOLD = 25;
+  // 「成果物」ラベル自身の行との近さを許容する範囲。作業内容と成果物の間に
+  // 大きな行間の空きが無いテンプレート（通常の折り返し行間のまま連続して
+  // 印字されている場合）向けのフォールバック判定に使う。
+  const DELIVERABLES_LABEL_TOLERANCE = 6;
 
   if (projectHeader) {
     const lowerLimit = troublesTopBoundary ?? projectHeader.y - 170;
@@ -278,7 +282,19 @@ export function parseLegacyReport(items: PdfTextItem[]): ParsedReportFields {
           splitIndex = i;
         }
       }
-      if (splitIndex >= 0) {
+
+      if (splitIndex === -1) {
+        // 行間の空きだけでは区切りを検出できなかった（作業内容と成果物が
+        // 同じ行間隔のまま連続して印字されているテンプレート）。この場合は
+        // 「成果物」ラベル自身のY座標を境界として使い、そのラベル行以下に
+        // ある行をすべて成果物として扱う。
+        const firstDeliverableIndex = bandItems.findIndex(
+          (it) => it.y <= deliverablesLabel.y + DELIVERABLES_LABEL_TOLERANCE,
+        );
+        if (firstDeliverableIndex > 0) splitIndex = firstDeliverableIndex - 1;
+      }
+
+      if (splitIndex >= 0 && splitIndex < bandItems.length - 1) {
         workContentItems = bandItems.slice(0, splitIndex + 1);
         deliverableItems = bandItems.slice(splitIndex + 1);
       }

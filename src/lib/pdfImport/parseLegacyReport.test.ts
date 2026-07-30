@@ -206,6 +206,36 @@ describe("parseLegacyReport", () => {
     expect(result.warnings).toContain("技術スタックの項目が見つかりませんでした");
   });
 
+  it("recovers 成果物 when it's printed with uniform line spacing (no larger gap before it)", () => {
+    // 実際の帳票では、作業内容の最後の行と成果物の最初の行の間に、通常の
+    // 折り返し行間(13pt)と同じ間隔しか無く、大きな区切りの空きが存在しない
+    // ケースがある(全ての行間が13ptで統一)。この場合でも「成果物」ラベル
+    // 自身のY座標を境界として、成果物を作業内容から正しく切り離せることを
+    // 確認する。
+    const items: PdfTextItem[] = [
+      item("プロジェクト名/作業内容", 50, 400),
+      item("国税情報システムの開発", 150, 390),
+      item("・外部連携チームでの設計対応", 150, 377),
+      item("・テスト計画のスケジュール管理", 150, 364),
+      item("・関係者との調整", 150, 351),
+      item("成果物", 50, 338), // 最初の成果物の行と同じ高さ(先頭揃え)
+      item("・WBS管理表", 150, 338),
+      item("・テスト仕様書", 150, 325),
+      item("・テストデータ", 150, 312),
+      item("今月の困った点", 50, 290),
+      item("対応・解決方法", 50, 280),
+      item("特に問題なし", 150, 296, 100),
+    ];
+
+    const result = parseLegacyReport(items);
+
+    expect(result.projectName).toBe("国税情報システムの開発");
+    expect(result.workContent).toBe(
+      "外部連携チームでの設計対応\nテスト計画のスケジュール管理\n関係者との調整",
+    );
+    expect(result.deliverables).toBe("WBS管理表\nテスト仕様書\nテストデータ");
+  });
+
   it("marks the project as not-ongoing when two period dates are present without '現在'", () => {
     const items: PdfTextItem[] = [
       item("期間", 50, 460),
