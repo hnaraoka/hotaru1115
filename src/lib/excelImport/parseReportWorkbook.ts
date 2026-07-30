@@ -62,12 +62,54 @@ const TECH_ROW_BY_CATEGORY: Record<TechCategoryValue, number> = {
   TOOL: 18,
   OS_ENV: 20,
 };
+const TECH_LABEL_COLUMN = "B";
 const TECH_COLUMNS = ["G", "N", "U", "AB"];
+// A category's row band is normally 2 rows, but rows are sometimes inserted
+// by hand (e.g. an extra ソフトウェア/ツール row). How far past a category's
+// expected start we're willing to scan for the *next* category's label
+// before giving up and falling back to the fixed 2-row assumption.
+const TECH_LABEL_SEARCH_WINDOW = 12;
+// Baseline last row of the 名称 table (OS_ENV's row + 1), used to compute how
+// many extra rows were inserted so every fixed row reference below the table
+// can shift down by the same amount.
+const BASE_TECH_TABLE_LAST_ROW = TECH_ROW_BY_CATEGORY.OS_ENV + 1;
 
 const DEV_PROCESS_COLUMNS = ["Z", "AA", "AB", "AC", "AD", "AE", "AF", "AG", "AH"];
 
 const WORK_ALLOCATION_FIRST_ROW = 49;
 const WORK_ALLOCATION_MAX_ROWS = 30;
+
+function findLabelRow(ws: ExcelJS.Worksheet, label: string, fromRow: number): number | undefined {
+  for (let row = fromRow; row < fromRow + TECH_LABEL_SEARCH_WINDOW; row++) {
+    if (cellText(ws, `${TECH_LABEL_COLUMN}${row}`) === label) return row;
+  }
+  return undefined;
+}
+
+/**
+ * 「名称」テーブルの各カテゴリは基本2行だが、テンプレートに手作業で行が
+ * 追加されるケースがある。次のカテゴリ見出しが実際に見つかった行を境界に
+ * 使うことで、行数を動的に判定する。見出しが見つからない場合（見出し列を
+ * 持たない簡易ワークブックなど）は従来通り2行固定にフォールバックする。
+ */
+function resolveTechCategoryRowRanges(
+  ws: ExcelJS.Worksheet,
+): Record<TechCategoryValue, { start: number; end: number }> {
+  const ranges = {} as Record<TechCategoryValue, { start: number; end: number }>;
+  let cursor = TECH_ROW_BY_CATEGORY[TECH_CATEGORY_OPTIONS[0].value];
+
+  TECH_CATEGORY_OPTIONS.forEach(({ value, label }, i) => {
+    const expectedStart = TECH_ROW_BY_CATEGORY[value];
+    const start = findLabelRow(ws, label, cursor) ?? Math.max(cursor, expectedStart);
+    const next = TECH_CATEGORY_OPTIONS[i + 1];
+    const nextStart = next ? findLabelRow(ws, next.label, start + 1) : undefined;
+    const end = nextStart ? nextStart - 1 : start + 1;
+    ranges[value] = { start, end };
+    cursor = end + 1;
+  });
+
+  return ranges;
+}
 
 export function parseReportWorkbook(workbook: ExcelJS.Workbook): ParsedReportFields {
   const warnings: string[] = [];
@@ -103,6 +145,7 @@ export function parseReportWorkbook(workbook: ExcelJS.Workbook): ParsedReportFie
   result.teleworkDays = parseLeadingNumber(cellText(ws, "X9"));
   result.onsiteDays = parseLeadingNumber(cellText(ws, "AE9"));
 
+  const techCategoryRanges = resolveTechCategoryRowRanges(ws);
   const techStack: Record<TechCategoryValue, string[]> = {
     LANGUAGE: [],
     FRAMEWORK: [],
@@ -111,11 +154,11 @@ export function parseReportWorkbook(workbook: ExcelJS.Workbook): ParsedReportFie
     OS_ENV: [],
   };
   for (const { value } of TECH_CATEGORY_OPTIONS) {
-    const row = TECH_ROW_BY_CATEGORY[value];
+    const { start, end } = techCategoryRanges[value];
     const names: string[] = [];
-    for (const rowOffset of [0, 1]) {
+    for (let row = start; row <= end; row++) {
       for (const col of TECH_COLUMNS) {
-        const name = cellText(ws, `${col}${row + rowOffset}`);
+        const name = cellText(ws, `${col}${row}`);
         if (name) names.push(name);
       }
     }
@@ -123,54 +166,58 @@ export function parseReportWorkbook(workbook: ExcelJS.Workbook): ParsedReportFie
   }
   result.techStack = techStack;
 
-  const periodStart = cellYearMonth(ws, "B27");
+  // 「名称」テーブルに行が追加された分だけ、以降の固定行参照を下にずらす。
+  const rowShift = techCategoryRanges.OS_ENV.end - BASE_TECH_TABLE_LAST_ROW;
+  const shiftedRow = (row: number) => row + rowShift;
+
+  const periodStart = cellYearMonth(ws, `B${shiftedRow(27)}`);
   if (periodStart) {
     result.projectPeriodStartYear = String(periodStart.year);
     result.projectPeriodStartMonth = String(periodStart.month);
   }
-  const ongoingCellText = cellText(ws, "B31");
+  const ongoingCellText = cellText(ws, `B${shiftedRow(31)}`);
   result.projectPeriodOngoing = ongoingCellText === "現在";
   if (!result.projectPeriodOngoing) {
-    const periodEnd = cellYearMonth(ws, "B31");
+    const periodEnd = cellYearMonth(ws, `B${shiftedRow(31)}`);
     if (periodEnd) {
       result.projectPeriodEndYear = String(periodEnd.year);
       result.projectPeriodEndMonth = String(periodEnd.month);
     }
   }
-  result.projectPeriodMonths = parseLeadingNumber(String(cellNumber(ws, "B34") ?? ""));
+  result.projectPeriodMonths = parseLeadingNumber(String(cellNumber(ws, `B${shiftedRow(34)}`) ?? ""));
 
-  result.projectName = cellText(ws, "G27");
-  result.workContent = cellText(ws, "G28");
+  result.projectName = cellText(ws, `G${shiftedRow(27)}`);
+  result.workContent = cellText(ws, `G${shiftedRow(28)}`);
   if (!result.projectName && !result.workContent) {
     warnings.push("プロジェクト名・作業内容を読み取れませんでした");
   }
 
   result.devProcesses = DEV_PROCESS_OPTIONS.filter((_, i) => {
     const col = DEV_PROCESS_COLUMNS[i];
-    const mark = cellText(ws, `${col}31`);
+    const mark = cellText(ws, `${col}${shiftedRow(31)}`);
     return mark === "〇" || mark === "○";
   });
 
-  result.deliverables = cellText(ws, "G35");
-  result.troubles = cellText(ws, "G38");
-  result.goodPoints = cellText(ws, "G41");
+  result.deliverables = cellText(ws, `G${shiftedRow(35)}`);
+  result.troubles = cellText(ws, `G${shiftedRow(38)}`);
+  result.goodPoints = cellText(ws, `G${shiftedRow(41)}`);
 
-  const ratingCells: { key: keyof ParsedReportFields; ref: string }[] = [
-    { key: "condition", ref: "G44" },
-    { key: "motivation", ref: "G46" },
-    { key: "workload", ref: "G48" },
-    { key: "difficulty", ref: "G50" },
-    { key: "teamConsultability", ref: "G52" },
-    { key: "growth", ref: "G54" },
+  const ratingCells: { key: keyof ParsedReportFields; row: number }[] = [
+    { key: "condition", row: 44 },
+    { key: "motivation", row: 46 },
+    { key: "workload", row: 48 },
+    { key: "difficulty", row: 50 },
+    { key: "teamConsultability", row: 52 },
+    { key: "growth", row: 54 },
   ];
-  for (const { key, ref } of ratingCells) {
-    const normalized = normalizeRatingLabel(cellText(ws, ref));
+  for (const { key, row } of ratingCells) {
+    const normalized = normalizeRatingLabel(cellText(ws, `G${shiftedRow(row)}`));
     if (normalized) (result as Record<string, unknown>)[key] = normalized;
   }
 
   const workAllocations: { category: string; percentage: number }[] = [];
   for (let i = 0; i < WORK_ALLOCATION_MAX_ROWS; i++) {
-    const row = WORK_ALLOCATION_FIRST_ROW + i;
+    const row = shiftedRow(WORK_ALLOCATION_FIRST_ROW) + i;
     const category = cellText(ws, `AL${row}`);
     if (!category || category === "計") break;
     const percentage = cellNumber(ws, `AM${row}`);
