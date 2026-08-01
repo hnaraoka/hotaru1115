@@ -260,8 +260,11 @@ export function parseLegacyReport(items: PdfTextItem[]): ParsedReportFields {
   const SECTION_GAP_THRESHOLD = 25;
   // 「成果物」ラベル自身の行との近さを許容する範囲。作業内容と成果物の間に
   // 大きな行間の空きが無いテンプレート（通常の折り返し行間のまま連続して
-  // 印字されている場合）向けのフォールバック判定に使う。
-  const DELIVERABLES_LABEL_TOLERANCE = 6;
+  // 印字されている場合）向けのフォールバック判定に使う。ラベルは成果物の
+  // セル内で縦方向中央揃えになっており、成果物が複数行ある場合はラベルの
+  // Y座標が成果物の1行目より下（中央寄り）にずれるため、行間隔(約13pt)の
+  // 1.5倍程度の余裕を持たせている。
+  const DELIVERABLES_LABEL_TOLERANCE = 20;
 
   if (projectHeader) {
     const lowerLimit = troublesTopBoundary ?? projectHeader.y - 170;
