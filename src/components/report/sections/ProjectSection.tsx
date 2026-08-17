@@ -132,16 +132,13 @@ export function ProjectSection({
         <ReferenceField label="前回の作業内容" value={workContentReference} onCopy={onCopyWorkContentReference} />
       </div>
 
-      <div className={fieldClass("devProcesses")}>
-        <label>開発工程{devProcessesRequired && " *"}</label>
-        <DevProcessCheckboxes
-          selected={state.devProcesses}
-          onChange={(v) => update("devProcesses", v)}
-          disabled={!devProcessesRequired}
-        />
-        {!devProcessesRequired && <span className="hint">内勤のため入力不要です。PDF出力では全項目「-」になります。</span>}
-        <FieldErrorText messages={errorsFor("devProcesses")} />
-      </div>
+      {devProcessesRequired && (
+        <div className={fieldClass("devProcesses")}>
+          <label>開発工程 *</label>
+          <DevProcessCheckboxes selected={state.devProcesses} onChange={(v) => update("devProcesses", v)} />
+          <FieldErrorText messages={errorsFor("devProcesses")} />
+        </div>
+      )}
     </>
   );
 }

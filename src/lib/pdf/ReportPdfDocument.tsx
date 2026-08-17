@@ -297,70 +297,72 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
           </Row>
         </View>
 
-        {/* 技術スタック */}
-        <View style={styles.table}>
-          <Row>
-            <ValueCell flex={1} last>
-              <Text style={{ ...styles.sectionHeading, backgroundColor: LABEL_BG, padding: 2 }}>名称</Text>
-            </ValueCell>
-          </Row>
-          {TECH_CATEGORY_OPTIONS.map(({ value, label }, categoryIndex, categories) => {
-            const items = report.techStackItems
-              .filter((t) => t.category === value)
-              .sort((a, b) => a.sortOrder - b.sortOrder)
-              .map((t) => t.name);
-            const rows = chunk(items.length > 0 ? items : ["-"], 4);
-            const isLastCategory = categoryIndex === categories.length - 1;
+        {/* 技術スタック（内勤は入力欄自体がないため出力しない） */}
+        {!isOfficeWork && (
+          <View style={styles.table}>
+            <Row>
+              <ValueCell flex={1} last>
+                <Text style={{ ...styles.sectionHeading, backgroundColor: LABEL_BG, padding: 2 }}>名称</Text>
+              </ValueCell>
+            </Row>
+            {TECH_CATEGORY_OPTIONS.map(({ value, label }, categoryIndex, categories) => {
+              const items = report.techStackItems
+                .filter((t) => t.category === value)
+                .sort((a, b) => a.sortOrder - b.sortOrder)
+                .map((t) => t.name);
+              const rows = chunk(items.length > 0 ? items : ["-"], 4);
+              const isLastCategory = categoryIndex === categories.length - 1;
 
-            return (
-              <View
-                key={value}
-                style={{
-                  flexDirection: "row",
-                  borderBottom: isLastCategory ? "none" : BORDER,
-                }}
-              >
-                <View style={{ ...styles.labelCell, width: 100 }}>
-                  <Text>{label}</Text>
+              return (
+                <View
+                  key={value}
+                  style={{
+                    flexDirection: "row",
+                    borderBottom: isLastCategory ? "none" : BORDER,
+                  }}
+                >
+                  <View style={{ ...styles.labelCell, width: 100 }}>
+                    <Text>{label}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    {rows.map((rowItems, rowIndex) => (
+                      <View
+                        key={rowIndex}
+                        style={{
+                          flexDirection: "row",
+                          borderBottom: rowIndex === rows.length - 1 ? "none" : BORDER,
+                          minHeight: 16,
+                        }}
+                      >
+                        {Array.from({ length: 4 }, (_, i) => rowItems[i] ?? "").map((name, i) => (
+                          <View
+                            key={i}
+                            style={{
+                              flex: 1,
+                              borderRight: i === 3 ? "none" : BORDER,
+                              padding: 3,
+                              justifyContent: "center",
+                              alignItems: "center",
+                            }}
+                          >
+                            {name && <Text style={{ textAlign: "center" }}>{name}</Text>}
+                          </View>
+                        ))}
+                      </View>
+                    ))}
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  {rows.map((rowItems, rowIndex) => (
-                    <View
-                      key={rowIndex}
-                      style={{
-                        flexDirection: "row",
-                        borderBottom: rowIndex === rows.length - 1 ? "none" : BORDER,
-                        minHeight: 16,
-                      }}
-                    >
-                      {Array.from({ length: 4 }, (_, i) => rowItems[i] ?? "").map((name, i) => (
-                        <View
-                          key={i}
-                          style={{
-                            flex: 1,
-                            borderRight: i === 3 ? "none" : BORDER,
-                            padding: 3,
-                            justifyContent: "center",
-                            alignItems: "center",
-                          }}
-                        >
-                          {name && <Text style={{ textAlign: "center" }}>{name}</Text>}
-                        </View>
-                      ))}
-                    </View>
-                  ))}
-                </View>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
+        )}
 
-        {/* プロジェクト */}
+        {/* プロジェクト（内勤は開発工程の列自体を出力しない） */}
         <View style={styles.table} wrap={false}>
           <Row>
             <LabelCell width={PERIOD_LABEL_WIDTH + PERIOD_VALUE_WIDTH}>期間</LabelCell>
             <LabelCell flex={1}>プロジェクト名</LabelCell>
-            <LabelCell width={devColTotalWidth}>開発工程</LabelCell>
+            {!isOfficeWork && <LabelCell width={devColTotalWidth}>開発工程</LabelCell>}
           </Row>
           <Row style={{ borderBottom: "none" }}>
             <View
@@ -383,45 +385,45 @@ export function ReportPdfDocument({ report }: { report: ReportWithRelations }) {
               )}
             </View>
 
-            <View style={{ flex: 1, borderRight: BORDER, padding: 5, justifyContent: "center" }}>
+            <View
+              style={{ flex: 1, borderRight: isOfficeWork ? "none" : BORDER, padding: 5, justifyContent: "center" }}
+            >
               <Text style={{ fontWeight: "bold", fontSize: 8.5, textAlign: "center" }}>
                 {report.projectName}
               </Text>
             </View>
 
-            <View style={{ width: devColTotalWidth, flexDirection: "row" }}>
-              {DEV_PROCESS_OPTIONS.map((option, i, arr) => {
-                const active = report.devProcesses.includes(option);
-                const chars = DEV_PROCESS_PDF_LABELS[option].split("");
-                return (
-                  <View
-                    key={option}
-                    style={{
-                      width: DEV_COL_WIDTH,
-                      borderRight: i === arr.length - 1 ? "none" : BORDER,
-                    }}
-                  >
-                    <View style={{ alignItems: "center", paddingTop: 3, height: DEV_LABEL_HEIGHT }}>
-                      {chars.map((ch, ci) => (
-                        <Text
-                          key={ci}
-                          style={{ fontSize: DEV_LABEL_FONT_SIZE, fontWeight: "bold", lineHeight: DEV_LABEL_LINE_HEIGHT }}
-                        >
-                          {ch}
-                        </Text>
-                      ))}
+            {!isOfficeWork && (
+              <View style={{ width: devColTotalWidth, flexDirection: "row" }}>
+                {DEV_PROCESS_OPTIONS.map((option, i, arr) => {
+                  const active = report.devProcesses.includes(option);
+                  const chars = DEV_PROCESS_PDF_LABELS[option].split("");
+                  return (
+                    <View
+                      key={option}
+                      style={{
+                        width: DEV_COL_WIDTH,
+                        borderRight: i === arr.length - 1 ? "none" : BORDER,
+                      }}
+                    >
+                      <View style={{ alignItems: "center", paddingTop: 3, height: DEV_LABEL_HEIGHT }}>
+                        {chars.map((ch, ci) => (
+                          <Text
+                            key={ci}
+                            style={{ fontSize: DEV_LABEL_FONT_SIZE, fontWeight: "bold", lineHeight: DEV_LABEL_LINE_HEIGHT }}
+                          >
+                            {ch}
+                          </Text>
+                        ))}
+                      </View>
+                      <View style={{ alignItems: "center", justifyContent: "flex-start", marginTop: 6 }}>
+                        {active && <Text style={{ fontSize: 9, color: "#0b5c1f" }}>○</Text>}
+                      </View>
                     </View>
-                    <View style={{ alignItems: "center", justifyContent: "flex-start", marginTop: 6 }}>
-                      {isOfficeWork ? (
-                        <Text style={{ fontSize: 9, color: "#999999" }}>-</Text>
-                      ) : (
-                        active && <Text style={{ fontSize: 9, color: "#0b5c1f" }}>○</Text>
-                      )}
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
+                  );
+                })}
+              </View>
+            )}
           </Row>
 
           {/* 作業内容: 長文でもこの行だけが伸び、期間・開発工程の高さには影響しない */}

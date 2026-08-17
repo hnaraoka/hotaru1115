@@ -129,7 +129,13 @@ function computeProjectPeriodMonths(
   return String((targetYear - startYear) * 12 + (targetMonth - startMonth) + 1);
 }
 
-function buildPayload(state: FormState, computedAge: string, computedExperienceYears: string): unknown {
+function buildPayload(
+  state: FormState,
+  computedAge: string,
+  computedExperienceYears: string,
+  workType: "ENGINEER" | "OFFICE",
+): unknown {
+  const isOfficeWork = workType === "OFFICE";
   return {
     submittedAt: state.submittedAt,
     targetYear: state.targetYear,
@@ -158,7 +164,7 @@ function buildPayload(state: FormState, computedAge: string, computedExperienceY
       ),
     ),
     workContent: state.workContent,
-    devProcesses: state.devProcesses,
+    devProcesses: isOfficeWork ? [] : state.devProcesses,
     deliverables: state.deliverables || null,
     troubles: state.troubles || null,
     goodPoints: state.goodPoints || null,
@@ -168,7 +174,7 @@ function buildPayload(state: FormState, computedAge: string, computedExperienceY
     difficulty: state.difficulty,
     teamConsultability: state.teamConsultability,
     growth: state.growth,
-    techStackItems: techStackRecordToItems(state.techStack),
+    techStackItems: isOfficeWork ? [] : techStackRecordToItems(state.techStack),
     workAllocations: state.workAllocations
       .filter((row) => row.category.trim() !== "")
       .map((row) => ({ category: row.category.trim(), percentage: toNullableInt(row.percentage) ?? 0 })),
@@ -189,6 +195,7 @@ export function ReportForm({
   workType: "ENGINEER" | "OFFICE";
 }) {
   const devProcessesRequired = workType !== "OFFICE";
+  const isOfficeWork = workType === "OFFICE";
   const router = useRouter();
   const isEdit = !!report;
   const [state, setState] = useState<FormState>(() => buildInitialState(report));
@@ -409,7 +416,7 @@ export function ReportForm({
     setFormErrors([]);
     setSubmitError(null);
 
-    const payload = buildPayload(state, computedAge, computedExperienceYears);
+    const payload = buildPayload(state, computedAge, computedExperienceYears, workType);
     const parsed = buildReportInputSchema(devProcessesRequired).safeParse(payload);
     if (!parsed.success) {
       const nextFieldErrors: Record<string, string[]> = {};
@@ -492,7 +499,7 @@ export function ReportForm({
         experienceAvailable={!!(engineerStartYear && engineerStartMonth)}
       />
       <ClientWorkSection {...sectionProps} />
-      <TechStackSection {...sectionProps} />
+      {!isOfficeWork && <TechStackSection {...sectionProps} />}
       <ProjectSection
         {...sectionProps}
         computedPeriodMonths={computedPeriodMonths}

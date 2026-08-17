@@ -15,8 +15,8 @@ const workAllocationItemSchema = z.object({
   percentage: z.number().int().min(1, "作業配分は1%以上で入力してください").max(100),
 });
 
-// devProcesses（開発工程）は、報告書の提出者が「内勤」の場合は入力不要になる
-// （PDF出力でも全項目「-」になる）ため、呼び出し側がその要否を渡す形にしている。
+// devProcesses（開発工程）は、報告書の提出者が「内勤」の場合は入力欄・PDF出力ともに
+// 表示されなくなる（項目自体が不要になる）ため、呼び出し側がその要否を渡す形にしている。
 export function buildReportInputSchema(devProcessesRequired: boolean) {
   return z
     .object({
