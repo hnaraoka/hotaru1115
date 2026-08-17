@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/requireAdmin";
 import { prisma } from "@/lib/prisma";
 
+// 半角/全角スペースの有無で照合が外れないよう、比較前に全て取り除く。
+// （ユーザー名は「姓 名」表記だが、ファイル名にはスペースが入らないことが多いため）
+function stripSpaces(value: string): string {
+  return value.replace(/[\s　]/g, "");
+}
+
 // LINE WORKS Driveの対象フォルダ内ファイル名一覧（管理者が手動でコピー&ペーストしたもの）を
 // アクティブユーザーの氏名と突き合わせ、一致したユーザーを外部提出確認済みとして自動登録する。
 export async function POST(request: NextRequest) {
@@ -35,7 +41,8 @@ export async function POST(request: NextRequest) {
 
   for (const user of users) {
     if (alreadyCoveredUserIds.has(user.id)) continue;
-    const fileName = lines.find((line) => line.includes(user.name));
+    const normalizedName = stripSpaces(user.name);
+    const fileName = lines.find((line) => stripSpaces(line).includes(normalizedName));
     if (!fileName) continue;
     matched.push({ userId: user.id, userName: user.name, fileName });
   }
