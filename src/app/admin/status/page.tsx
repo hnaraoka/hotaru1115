@@ -4,6 +4,7 @@ import { MONTH_OPTIONS } from "@/lib/constants";
 import { SendRemindersButton } from "@/components/admin/SendRemindersButton";
 import { MarkExternalSubmissionButton } from "@/components/admin/MarkExternalSubmissionButton";
 import { CopyTextButton } from "@/components/admin/CopyTextButton";
+import { DriveFileMatchPanel } from "@/components/admin/DriveFileMatchPanel";
 import { previousTargetMonthJst } from "@/lib/reminder";
 import { reviewStatusLabel, reviewStatusColor } from "@/lib/format";
 import { requireAdminPageSession } from "@/lib/requireAdminPage";
@@ -110,6 +111,10 @@ export default async function AdminStatusPage({ searchParams }: Props) {
             </Link>
           </div>
         </form>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <DriveFileMatchPanel targetYear={targetYear} targetMonth={targetMonth} />
       </div>
 
       <div className="page-heading" style={{ marginBottom: 14 }}>
