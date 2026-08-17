@@ -159,12 +159,12 @@ export function parseReportWorkbook(workbook: ExcelJS.Workbook): ParsedReportFie
     warnings.push("テンプレートの形式が想定と異なる可能性があります。読み込んだ内容を確認してください。");
   }
 
+  // 対象年月はフォーム側で使わない（画面表示時点の値を維持する）ため、
+  // 読み取れなかった場合の警告は出さない。
   const targetMonth = cellYearMonth(ws, "Z4");
   if (targetMonth) {
     result.targetYear = targetMonth.year;
     result.targetMonth = targetMonth.month;
-  } else {
-    warnings.push("対象月を読み取れませんでした");
   }
   result.experienceYears = parseLeadingNumber(cellText(ws, "Z5"));
 

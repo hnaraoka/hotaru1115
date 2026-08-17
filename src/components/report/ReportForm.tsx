@@ -355,8 +355,8 @@ export function ReportForm({
   function applyParsedFields(parsed: ParsedReportFields) {
     setState((prev) => {
       const next = { ...prev };
-      if (parsed.targetYear !== undefined) next.targetYear = parsed.targetYear;
-      if (parsed.targetMonth !== undefined) next.targetMonth = parsed.targetMonth;
+      // 対象年・対象月は画面表示時点の値（当月 or 前回の翌月）を維持し、
+      // Excelに記載の値では上書きしない。
       if (parsed.gender !== undefined) next.gender = parsed.gender;
       // 年齢・経験年数は読み込み元の値を使わず、自動計算に任せる。
       if (parsed.clientCompany !== undefined) next.clientCompany = parsed.clientCompany;

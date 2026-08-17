@@ -142,12 +142,13 @@ describe("parseReportWorkbook", () => {
     expect(result.clientCompany).toBe("テスト株式会社");
   });
 
-  it("warns when 対象月 (Z4) is missing", () => {
+  it("leaves targetYear/targetMonth undefined without warning when 対象月 (Z4) is missing", () => {
     const cells = fullReportCells();
     delete cells.Z4;
     const result = parseReportWorkbook(buildWorkbook(cells));
     expect(result.targetYear).toBeUndefined();
-    expect(result.warnings).toContain("対象月を読み取れませんでした");
+    expect(result.targetMonth).toBeUndefined();
+    expect(result.warnings).not.toContain("対象月を読み取れませんでした");
   });
 
   it("warns when 参画先企業 (G7) is missing", () => {
