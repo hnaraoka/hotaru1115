@@ -150,7 +150,13 @@ export default async function AdminStatusPage({ searchParams }: Props) {
       </div>
 
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
-        <form method="get" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* 対象年月・並び順・絞り込みが変わるたびにフォームを再マウントし、
+            select[defaultValue]/input[defaultChecked] の表示を確実に更新する */}
+        <form
+          method="get"
+          key={`${targetYear}-${targetMonth}-${sortDir}-${statusFilter.join(",")}`}
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
+        >
           <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
             <div className="field" style={{ width: 110 }}>
               <label htmlFor="year">対象年</label>
