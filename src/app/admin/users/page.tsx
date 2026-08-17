@@ -10,7 +10,7 @@ const ROLE_LABEL: Record<string, string> = { ADMIN: "管理者", USER: "一般" 
 export default async function AdminUsersPage() {
   await requireAdminPageSession();
 
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
+  const users = await prisma.user.findMany({ orderBy: { loginId: "asc" } });
 
   return (
     <>
