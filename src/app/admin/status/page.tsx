@@ -8,6 +8,7 @@ import { DriveFileMatchPanel } from "@/components/admin/DriveFileMatchPanel";
 import { previousTargetMonthJst } from "@/lib/reminder";
 import { reviewStatusLabel, reviewStatusColor } from "@/lib/format";
 import { requireAdminPageSession } from "@/lib/requireAdminPage";
+import { computeReviewFlags } from "@/lib/reportFlags";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,17 @@ export default async function AdminStatusPage({ searchParams }: Props) {
     }),
     prisma.report.findMany({
       where: { targetYear, targetMonth },
-      select: { id: true, userId: true, submittedAt: true, reviewStatus: true },
+      select: {
+        id: true,
+        userId: true,
+        submittedAt: true,
+        reviewStatus: true,
+        workContent: true,
+        deliverables: true,
+        troubles: true,
+        goodPoints: true,
+        techStackItems: { select: { id: true } },
+      },
     }),
     prisma.externalSubmission.findMany({
       where: { targetYear, targetMonth },
@@ -50,8 +61,10 @@ export default async function AdminStatusPage({ searchParams }: Props) {
 
   const reportByUserId = new Map(reports.map((r) => [r.userId, r]));
   const externalByUserId = new Map(externalSubmissions.map((e) => [e.userId, e]));
+  const flagsByReportId = new Map(reports.map((r) => [r.id, computeReviewFlags(r)]));
   const submittedCount = users.filter((u) => reportByUserId.has(u.id) || externalByUserId.has(u.id)).length;
   const unsubmittedUsers = users.filter((u) => !reportByUserId.has(u.id) && !externalByUserId.has(u.id));
+  const thinContentCount = reports.filter((r) => (flagsByReportId.get(r.id)?.length ?? 0) > 0).length;
   const reminderText =
     unsubmittedUsers.length > 0
       ? `【月次報告書】${targetYear}年${targetMonth}月分の提出リマインドです。\n以下の方はまだ提出が確認できていません。お手数ですが確認・提出をお願いします。\n\n${unsubmittedUsers
@@ -124,6 +137,12 @@ export default async function AdminStatusPage({ searchParams }: Props) {
           </h2>
           <p>
             {users.length}人中 <strong>{submittedCount}人提出済み</strong>（{users.length - submittedCount}人未提出）
+            {thinContentCount > 0 && (
+              <>
+                {" / "}
+                <strong style={{ color: "var(--warning-text)" }}>{thinContentCount}人内容が薄い</strong>
+              </>
+            )}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -142,6 +161,7 @@ export default async function AdminStatusPage({ searchParams }: Props) {
         {users.map((u) => {
           const report = reportByUserId.get(u.id);
           const external = externalByUserId.get(u.id);
+          const flags = report ? (flagsByReportId.get(report.id) ?? []) : [];
           return (
             <li key={u.id}>
               {report ? (
@@ -167,6 +187,18 @@ export default async function AdminStatusPage({ searchParams }: Props) {
                       >
                         {reviewStatusLabel(report.reviewStatus)}
                       </span>
+                      {flags.length > 0 && (
+                        <span
+                          className="report-item-period"
+                          title={flags.join("\n")}
+                          style={{
+                            background: "color-mix(in srgb, var(--warning) 16%, transparent)",
+                            color: "var(--warning-text)",
+                          }}
+                        >
+                          内容が薄い（{flags.length}件）
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="report-item-meta">
