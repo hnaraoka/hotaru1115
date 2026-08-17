@@ -27,7 +27,7 @@ export default async function RootLayout({
             </Link>
             {user && (
               <nav className="nav">
-                <Link href="/">一覧</Link>
+                {user.role !== "ADMIN" && <Link href="/">一覧</Link>}
                 {user.role === "ADMIN" && <Link href="/admin/status">提出状況</Link>}
                 {user.role === "ADMIN" && <Link href="/admin/users">管理者設定</Link>}
                 <Link href="/account/password">パスワード変更</Link>
