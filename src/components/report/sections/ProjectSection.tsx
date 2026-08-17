@@ -41,7 +41,7 @@ export function ProjectSection({
           <div style={{ display: "flex", gap: 8 }}>
             <input
               type="number"
-              placeholder="年"
+              placeholder="YYYY"
               min={2000}
               max={2100}
               value={state.projectPeriodStartYear}
@@ -53,7 +53,7 @@ export function ProjectSection({
               onChange={(e) => update("projectPeriodStartMonth", e.target.value)}
             >
               <option value="" disabled>
-                月
+                MM
               </option>
               {MONTH_OPTIONS.map((m) => (
                 <option key={m} value={m}>
@@ -85,7 +85,7 @@ export function ProjectSection({
             <div style={{ display: "flex", gap: 8 }}>
               <input
                 type="number"
-                placeholder="年"
+                placeholder="YYYY"
                 min={2000}
                 max={2100}
                 value={state.projectPeriodEndYear}
@@ -97,7 +97,7 @@ export function ProjectSection({
                 onChange={(e) => update("projectPeriodEndMonth", e.target.value)}
               >
                 <option value="" disabled>
-                  月
+                  MM
                 </option>
                 {MONTH_OPTIONS.map((m) => (
                   <option key={m} value={m}>
