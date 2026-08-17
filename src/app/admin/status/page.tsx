@@ -6,9 +6,22 @@ import { MarkExternalSubmissionButton } from "@/components/admin/MarkExternalSub
 import { CopyTextButton } from "@/components/admin/CopyTextButton";
 import { DriveFileMatchPanel } from "@/components/admin/DriveFileMatchPanel";
 import { previousTargetMonthJst } from "@/lib/reminder";
-import { reviewStatusLabel, reviewStatusColor } from "@/lib/format";
 import { requireAdminPageSession } from "@/lib/requireAdminPage";
 import { computeReviewFlags } from "@/lib/reportFlags";
+
+// 提出状況一覧の主ステータスバッジ。差し戻し＞未提出は個別に判定するため、
+// レビュー未承認（PENDING）の「作成済み」は、Driveへの実提出が未確認である
+// ことを示すために黄色にする。承認済み（APPROVED）はレビュー時にDrive提出も
+// 確認済みとみなし「提出済み」（緑）として扱う。
+function reportStatusBadge(reviewStatus: string): { label: string; background: string; color: string } {
+  if (reviewStatus === "NEEDS_REVISION") {
+    return { label: "差し戻し", background: "color-mix(in srgb, var(--danger) 14%, transparent)", color: "var(--danger)" };
+  }
+  if (reviewStatus === "APPROVED") {
+    return { label: "提出済み", background: "color-mix(in srgb, var(--success) 14%, transparent)", color: "var(--success)" };
+  }
+  return { label: "作成済み", background: "color-mix(in srgb, var(--warning) 16%, transparent)", color: "var(--warning-text)" };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -162,6 +175,7 @@ export default async function AdminStatusPage({ searchParams }: Props) {
           const report = reportByUserId.get(u.id);
           const external = externalByUserId.get(u.id);
           const flags = report ? (flagsByReportId.get(report.id) ?? []) : [];
+          const statusBadge = report ? reportStatusBadge(report.reviewStatus) : null;
           return (
             <li key={u.id}>
               {report ? (
@@ -174,18 +188,9 @@ export default async function AdminStatusPage({ searchParams }: Props) {
                     <span style={{ display: "flex", gap: 6 }}>
                       <span
                         className="report-item-period"
-                        style={{ background: "color-mix(in srgb, var(--success) 14%, transparent)", color: "var(--success)" }}
+                        style={{ background: statusBadge!.background, color: statusBadge!.color }}
                       >
-                        作成済み
-                      </span>
-                      <span
-                        className="report-item-period"
-                        style={{
-                          background: `color-mix(in srgb, ${reviewStatusColor(report.reviewStatus)} 14%, transparent)`,
-                          color: reviewStatusColor(report.reviewStatus),
-                        }}
-                      >
-                        {reviewStatusLabel(report.reviewStatus)}
+                        {statusBadge!.label}
                       </span>
                       {flags.length > 0 && (
                         <span
