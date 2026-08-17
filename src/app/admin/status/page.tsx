@@ -48,12 +48,12 @@ export default async function AdminStatusPage({ searchParams }: Props) {
 
   const [users, reports, externalSubmissions] = await Promise.all([
     prisma.user.findMany({
-      where: { isActive: true },
-      orderBy: [{ role: "asc" }, { name: "asc" }],
+      where: { isActive: true, role: "USER" },
+      orderBy: { name: "asc" },
       select: { id: true, name: true, loginId: true, role: true },
     }),
     prisma.report.findMany({
-      where: { targetYear, targetMonth },
+      where: { targetYear, targetMonth, user: { role: "USER" } },
       select: {
         id: true,
         userId: true,
@@ -67,7 +67,7 @@ export default async function AdminStatusPage({ searchParams }: Props) {
       },
     }),
     prisma.externalSubmission.findMany({
-      where: { targetYear, targetMonth },
+      where: { targetYear, targetMonth, user: { role: "USER" } },
       select: { userId: true, confirmedByName: true, note: true },
     }),
   ]);

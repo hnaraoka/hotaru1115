@@ -33,15 +33,15 @@ export async function sendSubmissionReminders(
 ): Promise<ReminderSummary> {
   const [users, reports, externalSubmissions] = await Promise.all([
     prisma.user.findMany({
-      where: { isActive: true },
+      where: { isActive: true, role: "USER" },
       select: { id: true, loginId: true, name: true, email: true },
     }),
     prisma.report.findMany({
-      where: { targetYear, targetMonth },
+      where: { targetYear, targetMonth, user: { role: "USER" } },
       select: { userId: true },
     }),
     prisma.externalSubmission.findMany({
-      where: { targetYear, targetMonth },
+      where: { targetYear, targetMonth, user: { role: "USER" } },
       select: { userId: true },
     }),
   ]);

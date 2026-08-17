@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     .filter((v) => v.length > 0);
 
   const [users, reports, externalSubmissions] = await Promise.all([
-    prisma.user.findMany({ where: { isActive: true }, select: { id: true, name: true } }),
+    prisma.user.findMany({ where: { isActive: true, role: "USER" }, select: { id: true, name: true } }),
     prisma.report.findMany({ where: { targetYear, targetMonth }, select: { userId: true } }),
     prisma.externalSubmission.findMany({ where: { targetYear, targetMonth }, select: { userId: true } }),
   ]);
