@@ -176,7 +176,7 @@ export default async function AdminStatusPage({ searchParams }: Props) {
                         className="report-item-period"
                         style={{ background: "color-mix(in srgb, var(--success) 14%, transparent)", color: "var(--success)" }}
                       >
-                        提出済み
+                        作成済み
                       </span>
                       <span
                         className="report-item-period"
@@ -216,7 +216,7 @@ export default async function AdminStatusPage({ searchParams }: Props) {
                         className="report-item-period"
                         style={{ background: "color-mix(in srgb, var(--success) 14%, transparent)", color: "var(--success)" }}
                       >
-                        確認済み（外部提出）
+                        提出済み（Driveに提出済み）
                       </span>
                     ) : (
                       <span
