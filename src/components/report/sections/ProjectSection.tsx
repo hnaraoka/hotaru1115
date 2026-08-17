@@ -1,5 +1,6 @@
 import { FieldErrorText, ReferenceField } from "@/components/report/FormFieldHelpers";
 import { DevProcessCheckboxes } from "@/components/report/DevProcessCheckboxes";
+import { MONTH_OPTIONS } from "@/lib/constants";
 import type { SectionProps } from "@/components/report/reportFormTypes";
 
 type ProjectSectionProps = SectionProps & {
@@ -41,15 +42,25 @@ export function ProjectSection({
             <input
               type="number"
               placeholder="年"
+              min={2000}
+              max={2100}
               value={state.projectPeriodStartYear}
               onChange={(e) => update("projectPeriodStartYear", e.target.value)}
             />
-            <input
-              type="number"
-              placeholder="月"
+            <select
+              aria-label="プロジェクト参画月"
               value={state.projectPeriodStartMonth}
               onChange={(e) => update("projectPeriodStartMonth", e.target.value)}
-            />
+            >
+              <option value="" disabled>
+                月
+              </option>
+              {MONTH_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  {m}月
+                </option>
+              ))}
+            </select>
           </div>
           <FieldErrorText messages={errorsFor("projectPeriodStartYear", "projectPeriodStartMonth")} />
         </div>
@@ -75,15 +86,25 @@ export function ProjectSection({
               <input
                 type="number"
                 placeholder="年"
+                min={2000}
+                max={2100}
                 value={state.projectPeriodEndYear}
                 onChange={(e) => update("projectPeriodEndYear", e.target.value)}
               />
-              <input
-                type="number"
-                placeholder="月"
+              <select
+                aria-label="期間終了月"
                 value={state.projectPeriodEndMonth}
                 onChange={(e) => update("projectPeriodEndMonth", e.target.value)}
-              />
+              >
+                <option value="" disabled>
+                  月
+                </option>
+                {MONTH_OPTIONS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}月
+                  </option>
+                ))}
+              </select>
             </div>
             <FieldErrorText messages={errorsFor("projectPeriodEndYear", "projectPeriodEndMonth")} />
           </div>

@@ -125,6 +125,7 @@ function computeProjectPeriodMonths(
   const startYear = toNullableInt(startYearStr);
   const startMonth = toNullableInt(startMonthStr);
   if (startYear === null || startMonth === null) return "";
+  if (startYear < 2000 || startYear > 2100 || startMonth < 1 || startMonth > 12) return "";
   return String((targetYear - startYear) * 12 + (targetMonth - startMonth) + 1);
 }
 
