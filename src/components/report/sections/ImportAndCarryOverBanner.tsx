@@ -11,7 +11,6 @@ export function ImportAndCarryOverBanner({
   imported,
   importError,
   importWarnings,
-  onImportPdf,
   onImportExcel,
 }: {
   latestReport: ReportWithRelations | null;
@@ -22,7 +21,6 @@ export function ImportAndCarryOverBanner({
   imported: boolean;
   importError: string | null;
   importWarnings: string[];
-  onImportPdf: (file: File) => void;
   onImportExcel: (file: File) => void;
 }) {
   return (
@@ -46,22 +44,8 @@ export function ImportAndCarryOverBanner({
 
       <div className="carry-over-banner">
         <span style={{ flexBasis: "100%" }}>
-          過去に作成した月次報告書のPDFまたはExcelファイルがあれば、読み込んでフォームに自動入力できます。
+          過去に作成した月次報告書のExcelファイルがあれば、読み込んでフォームに自動入力できます。
         </span>
-        <label className="btn btn-secondary" style={{ cursor: "pointer" }}>
-          {importing ? "読み込み中..." : "PDFから読み込む"}
-          <input
-            type="file"
-            accept="application/pdf"
-            style={{ display: "none" }}
-            disabled={importing}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (file) onImportPdf(file);
-            }}
-          />
-        </label>
         <label className="btn btn-secondary" style={{ cursor: "pointer" }}>
           {importing ? "読み込み中..." : "Excelから読み込む"}
           <input

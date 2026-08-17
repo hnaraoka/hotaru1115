@@ -1,8 +1,43 @@
 import ExcelJS from "exceljs";
 import { DEV_PROCESS_OPTIONS, TECH_CATEGORY_OPTIONS } from "@/lib/constants";
 import type { TechCategoryValue } from "@/lib/constants";
-import type { ParsedReportFields } from "@/lib/pdfImport/parseLegacyReport";
 import { normalizeRatingLabel } from "@/lib/reportImport/ratingLabels";
+
+export type ParsedReportFields = {
+  targetYear?: number;
+  targetMonth?: number;
+  gender?: string;
+  age?: string;
+  experienceYears?: string;
+  clientCompany?: string;
+  workLocation?: string;
+  workDays?: string;
+  workHours?: string;
+  teleworkDays?: string;
+  onsiteDays?: string;
+  projectName?: string;
+  projectPeriodStartYear?: string;
+  projectPeriodStartMonth?: string;
+  projectPeriodOngoing?: boolean;
+  projectPeriodEndYear?: string;
+  projectPeriodEndMonth?: string;
+  projectPeriodMonths?: string;
+  workContent?: string;
+  devProcesses?: string[];
+  deliverables?: string;
+  troubles?: string;
+  goodPoints?: string;
+  condition?: string;
+  motivation?: string;
+  workload?: string;
+  difficulty?: string;
+  teamConsultability?: string;
+  growth?: string;
+  techStack?: Record<TechCategoryValue, string[]>;
+  workAllocations?: { category: string; percentage: number }[];
+  /** Fields we could not confidently extract, for surfacing a warning to the user. */
+  warnings: string[];
+};
 
 const SHEET_NAME = "職務経歴";
 

@@ -6,7 +6,7 @@ import type { Report, TechStackItem, WorkAllocation } from "@prisma/client";
 import { buildReportInputSchema, type ReportInput } from "@/lib/reportSchema";
 import { emptyTechStack, techStackItemsToRecord, techStackRecordToItems } from "@/lib/techStack";
 import { calculateAgeAsOf, calculateExperienceYears } from "@/lib/ageCalc";
-import type { ParsedReportFields } from "@/lib/pdfImport/parseLegacyReport";
+import type { ParsedReportFields } from "@/lib/excelImport/parseReportWorkbook";
 import type { FormState, ReferenceFields } from "@/components/report/reportFormTypes";
 import { WorkAllocationEditor } from "@/components/report/WorkAllocationEditor";
 import { ImportAndCarryOverBanner } from "@/components/report/sections/ImportAndCarryOverBanner";
@@ -340,10 +340,6 @@ export function ReportForm({
     setImporting(false);
   }
 
-  function handleImportPdf(file: File) {
-    return handleImport(file, "/api/reports/import-pdf", "PDFの読み込みに失敗しました");
-  }
-
   function handleImportExcel(file: File) {
     return handleImport(file, "/api/reports/import-excel", "Excelの読み込みに失敗しました");
   }
@@ -483,7 +479,6 @@ export function ReportForm({
           imported={imported}
           importError={importError}
           importWarnings={importWarnings}
-          onImportPdf={handleImportPdf}
           onImportExcel={handleImportExcel}
         />
       )}
