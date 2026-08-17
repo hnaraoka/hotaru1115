@@ -64,6 +64,15 @@ Next.js (Node.js) + Prisma + PostgreSQL で構築した、SES常駐エンジニ�
   3. **画面内バナー**: 当月分が未提出のユーザーには、報告書一覧の上部に「今月分の報告書はまだ提出されていません」というバナーが表示されます（報告書を1件も作ったことがない新規ユーザーには表示されません）。
   - 自動・手動いずれの実行結果も管理者ダッシュボードの通知一覧に記録されます（未提出者数・メール送信数・メール未登録数）。
 
+## LINE WORKS Driveへの自動格納
+
+- **承認時に自動アップロード**: 管理者が報告書詳細画面の「承認する」を押すと、その場でPDFを生成し、LINE WORKS Drive（サービスアカウントに紐づく指定ユーザーのマイドライブ、`LINEWORKS_DRIVE_FOLDER_ID` を設定していればその配下のフォルダ）へ自動アップロードします。ファイル名はPDF出力と同じ形式（例: `202601度月次報告書_山田太郎.pdf`）です。
+- **未設定時は影響なし**: `LINEWORKS_CLIENT_ID` / `LINEWORKS_CLIENT_SECRET` / `LINEWORKS_SERVICE_ACCOUNT` / `LINEWORKS_PRIVATE_KEY` / `LINEWORKS_DRIVE_USER_ID` を1つでも設定していない場合、この機能は完全にスキップされ、承認処理自体には影響しません。
+- **失敗時の扱い**: アップロードに失敗しても承認は取り消されません。エラー内容は報告書に記録され、報告書詳細画面（管理者のみ表示）にエラーメッセージと「LINE WORKS Driveへ再送信」ボタンが表示されます。また、管理者ダッシュボードの通知一覧にも失敗が記録されます。
+- **認証方式**: LINE WORKS API 2.0のサービスアカウント（JWT Bearer）認証を使用します。LINE WORKS Developer Consoleでアプリを作成し、サービスアカウント認証を有効化のうえ、Client ID・Client Secret・Service Account・秘密鍵を発行して環境変数に設定してください。
+- **既知の制限**: 開発時の環境からLINE WORKSの公式ドキュメント（developers.worksmobile.com）に外部アクセスできなかったため、ドライブAPIのアップロード用エンドポイント・リクエスト形式は現時点で実機検証できていません（`src/lib/lineworksDrive.ts` にその旨を記載しています）。本番投入前に実際の認証情報で承認操作を1件試し、失敗した場合はエラーメッセージ（LINE WORKS APIのレスポンスをそのまま含みます）を元にエンドポイント/フィールド名を公式ドキュメントと突き合わせて調整してください。
+- Sharedrive（共有ドライブ）へのアップロードはユーザーアカウント認証が必要なためサービスアカウント方式では利用できません。そのため本機能は特定ユーザー1名の「マイドライブ」を格納先とする設計です。
+
 ## 技術構成
 
 - [Next.js](https://nextjs.org)（App Router / TypeScript）
@@ -92,6 +101,7 @@ cp .env.example .env
 - `AUTH_TRUST_HOST`: ローカル開発や Vercel 以外の環境では `true` を設定
 - `RESEND_API_KEY` / `NOTIFY_FROM_EMAIL`: 管理者へのメール通知を使う場合に設定（未設定でも動作します）
 - `CRON_SECRET`: 提出リマインドの自動送信（Vercel Cron）を使う場合に設定（未設定の場合、自動送信のみ無効になります）
+- `LINEWORKS_CLIENT_ID` / `LINEWORKS_CLIENT_SECRET` / `LINEWORKS_SERVICE_ACCOUNT` / `LINEWORKS_PRIVATE_KEY` / `LINEWORKS_DRIVE_USER_ID` / `LINEWORKS_DRIVE_FOLDER_ID`: 承認済み報告書のLINE WORKS Driveへの自動格納を使う場合に設定（詳細は後述、未設定の場合はこの機能のみ無効になります）
 
 ### 3. マイグレーションの適用
 
@@ -150,6 +160,7 @@ src/
     reports/new, [id], [id]/edit  報告書の新規作成・詳細・編集画面
     api/reports/                  報告書CRUD API
     api/reports/[id]/pdf/         PDF生成API
+    api/reports/[id]/drive-upload/ LINE WORKS Driveへの自動格納の手動再試行API（管理者用）
   components/
     admin/                        ユーザー管理・通知のUI部品
     report/                       報告書フォーム・タグ入力・作業配分エディタ等
@@ -164,6 +175,9 @@ src/
     constants.ts                  開発工程・技術カテゴリ・評価段階の定義
     reportSchema.ts                Zodバリデーションスキーマ（クライアント/サーバー共通）
     reportData.ts                  Prisma書き込み用データ変換
+    reportPdf.ts                   PDF生成の共通処理（PDF出力・LINE WORKS Drive自動格納で共用）
+    lineworksDrive.ts               LINE WORKS Driveアップロード用APIクライアント（サービスアカウント認証）
+    driveUpload.ts                  承認時のLINE WORKS Drive自動格納オーケストレーション
     format.ts                      表示用ラベル変換
     pdf/
       ReportPdfDocument.tsx        PDFレイアウト定義

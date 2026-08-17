@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/requireAdmin";
 import { prisma } from "@/lib/prisma";
 import { notifyRevisionRequested } from "@/lib/notify";
+import { attemptLineWorksDriveUpload } from "@/lib/driveUpload";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -38,7 +39,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   if (reviewStatus === "NEEDS_REVISION") {
     await notifyRevisionRequested(report.user, report.targetYear, report.targetMonth, updated.reviewComment ?? "");
+    return NextResponse.json(updated);
   }
 
-  return NextResponse.json(updated);
+  // 承認時はPDFを生成しLINE WORKS Driveへ自動格納する（未設定環境では何もしない）。
+  // 失敗しても承認自体は成立させ、エラー内容はReportに記録して管理画面から確認・再試行できるようにする。
+  await attemptLineWorksDriveUpload(id);
+  const finalReport = await prisma.report.findUnique({ where: { id } });
+
+  return NextResponse.json(finalReport);
 }

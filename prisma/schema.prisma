@@ -120,6 +120,11 @@ model Report {
   reviewedAt     DateTime? // レビュー日時
   reviewedByName String? // レビューした管理者名
 
+  driveFileId      String? // LINE WORKS Drive上のファイルID（自動格納成功時）
+  driveFileUrl     String? // LINE WORKS Drive上のファイルURL（APIレスポンスに含まれる場合のみ）
+  driveUploadedAt  DateTime? // LINE WORKS Driveへの自動格納が成功した日時
+  driveUploadError String?   @db.Text // 直近の自動格納が失敗した場合のエラー内容
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

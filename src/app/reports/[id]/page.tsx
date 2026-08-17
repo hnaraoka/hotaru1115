@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { DeleteReportButton } from "@/components/report/DeleteReportButton";
 import { ReviewPanel } from "@/components/report/ReviewPanel";
+import { DriveUploadStatus } from "@/components/report/DriveUploadStatus";
 import { ratingLabel, formatProjectPeriod, reviewStatusLabel, reviewStatusColor } from "@/lib/format";
 import { RATING_FIELDS, TECH_CATEGORY_OPTIONS } from "@/lib/constants";
 import { computeReviewFlags } from "@/lib/reportFlags";
@@ -252,6 +253,15 @@ export default async function ReportDetailPage({ params, searchParams }: Props) 
           userName={report.user.name}
           targetYear={report.targetYear}
           targetMonth={report.targetMonth}
+        />
+      )}
+
+      {isAdmin && report.reviewStatus === "APPROVED" && (
+        <DriveUploadStatus
+          reportId={report.id}
+          driveUploadedAt={report.driveUploadedAt ? report.driveUploadedAt.toISOString() : null}
+          driveUploadError={report.driveUploadError}
+          driveFileUrl={report.driveFileUrl}
         />
       )}
     </>
