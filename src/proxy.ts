@@ -23,6 +23,10 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
 
+  if (pathname === "/" && user.role === "ADMIN") {
+    return NextResponse.redirect(new URL("/admin/status", req.nextUrl.origin));
+  }
+
   return NextResponse.next();
 });
 
