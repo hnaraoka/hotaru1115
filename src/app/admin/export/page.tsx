@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminPageSession } from "@/lib/requireAdminPage";
 import { currentTargetMonthJst } from "@/lib/reminder";
 import { ExportReportsCsvButton } from "@/components/admin/ExportReportsCsvButton";
+import { DeleteReportsByYearButton } from "@/components/admin/DeleteReportsByYearButton";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +111,41 @@ export default async function AdminExportPage({ searchParams }: Props) {
         出力対象: {fromYear}年〜{toYear}年（{reports.length}件）。技術スタック・作業配分の内訳も1行にまとめて出力されます。
         出力後にデータを削除する場合は、必ず出力したCSVの内容を確認してから行ってください。
       </p>
+
+      <div className="card" style={{ padding: 20, marginTop: 20 }}>
+        <div className="section-title" style={{ marginTop: 0, border: "none", padding: 0 }}>
+          危険な操作: 年単位でのデータ削除
+        </div>
+        <p className="hint" style={{ margin: "6px 0 12px" }}>
+          対象年の月次報告書を完全に削除します。技術スタック・作業配分の内訳も一緒に削除され、元に戻せません。
+          必ず上記のCSV出力で内容を確認・保存してから実行してください。
+        </p>
+
+        {yearCounts.length === 0 ? (
+          <div className="empty-state">削除できるデータがありません。</div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                <th style={{ textAlign: "left", padding: "6px 8px", fontSize: 13, color: "var(--muted)" }}>対象年</th>
+                <th style={{ textAlign: "left", padding: "6px 8px", fontSize: 13, color: "var(--muted)" }}>件数</th>
+                <th style={{ textAlign: "right", padding: "6px 8px", fontSize: 13, color: "var(--muted)" }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {yearCounts.map((y) => (
+                <tr key={y.targetYear} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td style={{ padding: "8px" }}>{y.targetYear}年</td>
+                  <td style={{ padding: "8px" }}>{y._count._all}件</td>
+                  <td style={{ padding: "8px", textAlign: "right" }}>
+                    <DeleteReportsByYearButton year={y.targetYear} count={y._count._all} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </>
   );
 }
