@@ -50,10 +50,13 @@ export function parseCsv(text: string): string[][] {
 }
 
 function escapeCsvField(value: string): string {
-  if (/[",\n]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  // Excel等で開いた際に `=` `+` `-` `@` 始まりの値が数式として実行される
+  // （CSVインジェクション）のを防ぐため、先頭にアポストロフィを付与する。
+  const guarded = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  if (/[",\n]/.test(guarded)) {
+    return `"${guarded.replace(/"/g, '""')}"`;
   }
-  return value;
+  return guarded;
 }
 
 export function toCsv(rows: string[][]): string {

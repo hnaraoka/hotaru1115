@@ -43,12 +43,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await bcrypt.compare(password, user.passwordHash);
 
         if (!valid) {
-          const failedLoginCount = user.failedLoginCount + 1;
-          await prisma.user.update({
+          // DBのincrementで加算する。読み込んだ古いfailedLoginCountに+1して
+          // 書き戻す方式だと、並列に何度もログインを試行された際に更新が
+          // 競合し、カウントがほとんど増えず上限に達しないことがある。
+          const updated = await prisma.user.update({
             where: { id: user.id },
-            data: { failedLoginCount, lastFailedAt: new Date() },
+            data: { failedLoginCount: { increment: 1 }, lastFailedAt: new Date() },
+            select: { failedLoginCount: true },
           });
-          if (failedLoginCount === MAX_FAILED_LOGIN_ATTEMPTS) {
+          if (updated.failedLoginCount === MAX_FAILED_LOGIN_ATTEMPTS) {
             await notifyFailedLogin(user);
           }
           return null;

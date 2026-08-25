@@ -43,7 +43,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const actingUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { workType: true },
+    select: { workType: true, gender: true },
   });
 
   const body = await request.json();
@@ -55,11 +55,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
+  // 性別は画面上は編集不可（ユーザー情報からの自動反映）だが、APIを直接
+  // 叩けば任意の値を送れてしまうため、クライアントの値は使わずサーバー側で
+  // ユーザー情報から取得した値に必ず上書きする。
+  const data = { ...parsed.data, gender: actingUser?.gender ?? null };
+
   try {
     const report = await prisma.report.update({
       where: { id },
       data: {
-        ...toReportUpdateData(parsed.data),
+        ...toReportUpdateData(data),
         // 内容が変わった以上、管理者に再確認してもらう必要があるため、
         // 本人による保存のたびにレビュー状況を未レビューへ戻す。
         reviewStatus: "PENDING",

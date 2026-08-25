@@ -61,4 +61,8 @@ describe("toCsv", () => {
     ];
     expect(parseCsv(toCsv(rows))).toEqual(rows);
   });
+
+  it("prefixes an apostrophe on values that would be read as a formula by Excel", () => {
+    expect(toCsv([["=1+1", "+1", "-1", "@SUM(A1)", "plain"]])).toBe("'=1+1,'+1,'-1,'@SUM(A1),plain");
+  });
 });

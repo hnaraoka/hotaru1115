@@ -173,6 +173,13 @@ export function EditUserForm({ user, emailConfigured }: { user: UserData; emailC
                 {option.label}
               </option>
             ))}
+            {/* 選択肢にない値（過去のCSV一括登録などによる未整理データ）が
+                入っている場合、選ばれずに「選択してください」が表示されて
+                しまい、そのまま保存すると気づかず空欄に上書きされてしまう。
+                それを防ぐため、選択肢にない既存値は選べる形で残しておく。 */}
+            {user.gender && !GENDER_OPTIONS.some((o) => o.value === user.gender) && (
+              <option value={user.gender}>{user.gender}（未整理の値）</option>
+            )}
           </select>
           <span className="hint">月次報告書の性別欄に自動反映されます。</span>
         </div>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/requireAdmin";
 import { generateInitialPassword, hashPassword } from "@/lib/password";
 import { notifyPasswordReset } from "@/lib/notify";
+import { normalizeGender } from "@/lib/constants";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -31,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (typeof body.name === "string" && body.name.trim() !== "") data.name = body.name.trim();
   if (body.role === "ADMIN" || body.role === "USER") data.role = body.role;
   if (body.workType === "ENGINEER" || body.workType === "OFFICE") data.workType = body.workType;
-  if (typeof body.gender === "string") data.gender = body.gender.trim() === "" ? null : body.gender.trim();
+  if (typeof body.gender === "string") data.gender = normalizeGender(body.gender);
   if (typeof body.email === "string") data.email = body.email.trim() === "" ? null : body.email.trim();
   if (typeof body.isActive === "boolean") data.isActive = body.isActive;
 

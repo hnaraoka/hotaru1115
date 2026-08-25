@@ -22,5 +22,14 @@ export async function POST(request: NextRequest) {
 
   const result = await prisma.report.deleteMany({ where: { targetYear: year } });
 
+  // 復元不可能な一括削除のため、誰が・いつ・何件削除したかを通知一覧に
+  // 記録しておく（他の管理操作の記録と同じ仕組みを利用）。
+  const adminName = session.user.name ?? session.user.loginId;
+  await prisma.notification.create({
+    data: {
+      message: `${adminName}さんが${year}年分の月次報告書${result.count}件を一括削除しました。`,
+    },
+  });
+
   return NextResponse.json({ success: true, deletedCount: result.count });
 }

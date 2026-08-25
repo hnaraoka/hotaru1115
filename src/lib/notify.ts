@@ -1,13 +1,14 @@
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 import type { User } from "@prisma/client";
+import { MAX_FAILED_LOGIN_ATTEMPTS } from "@/lib/authConstants";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const notifyFromAddress = process.env.NOTIFY_FROM_EMAIL ?? "onboarding@resend.dev";
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 export async function notifyFailedLogin(user: User) {
-  const message = `${user.name}さん（ID: ${user.loginId}）のログインが3回連続で失敗しました。`;
+  const message = `${user.name}さん（ID: ${user.loginId}）のログインが${MAX_FAILED_LOGIN_ATTEMPTS}回連続で失敗しました。`;
 
   await prisma.notification.create({
     data: { message, relatedUserId: user.id },

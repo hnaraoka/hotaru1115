@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   const actingUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { workType: true },
+    select: { workType: true, gender: true },
   });
 
   const body = await request.json();
@@ -34,9 +34,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 性別は画面上は編集不可（ユーザー情報からの自動反映）だが、APIを直接
+  // 叩けば任意の値を送れてしまうため、クライアントの値は使わずサーバー側で
+  // ユーザー情報から取得した値に必ず上書きする。
+  const data = { ...parsed.data, gender: actingUser?.gender ?? null };
+
   try {
     const report = await prisma.report.create({
-      data: toReportCreateData(parsed.data, session.user.id),
+      data: toReportCreateData(data, session.user.id),
     });
     return NextResponse.json(report, { status: 201 });
   } catch (error: unknown) {

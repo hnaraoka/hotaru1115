@@ -32,6 +32,15 @@ export const GENDER_OPTIONS = [
   { value: "女性", label: "女性" },
 ] as const;
 
+// GENDER_OPTIONSにない値（CSV一括登録での自由入力の揺れなど）がDBに
+// 保存されるのを防ぐ。編集画面のセレクトは選択肢固定のため、想定外の値が
+// 入っていると保存時に黙って空欄扱いになってしまう問題を避けるための正規化。
+export function normalizeGender(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return GENDER_OPTIONS.some((o) => o.value === trimmed) ? trimmed : null;
+}
+
 export const RATING_OPTIONS = [
   { value: "EXCELLENT", label: "大変良い" },
   { value: "GOOD", label: "良い" },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/requireAdmin";
 import { generateInitialPassword, hashPassword } from "@/lib/password";
+import { normalizeGender } from "@/lib/constants";
 
 type InputRow = {
   loginId: string;
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     const role: "ADMIN" | "USER" = r.role === "ADMIN" ? "ADMIN" : "USER";
     const email = typeof r.email === "string" && r.email.trim() !== "" ? r.email.trim() : null;
     const birthDateInput = typeof r.birthDate === "string" ? r.birthDate.trim() : "";
-    const gender = typeof r.gender === "string" && r.gender.trim() !== "" ? r.gender.trim() : null;
+    const gender = normalizeGender(r.gender);
     const workType = parseWorkType(r.workType);
 
     const fail = (error: string, action: ResultRow["action"] = "created") =>

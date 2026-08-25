@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/requireAdmin";
 import { generateInitialPassword, hashPassword } from "@/lib/password";
+import { normalizeGender } from "@/lib/constants";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
   const role = body.role === "ADMIN" ? "ADMIN" : "USER";
   const email = typeof body.email === "string" && body.email.trim() !== "" ? body.email.trim() : null;
   const workType = body.workType === "OFFICE" ? "OFFICE" : "ENGINEER";
-  const gender = typeof body.gender === "string" && body.gender.trim() !== "" ? body.gender.trim() : null;
+  const gender = normalizeGender(body.gender);
 
   if (!loginId || !name) {
     return NextResponse.json({ error: "ログインIDと氏名は必須です" }, { status: 400 });
