@@ -9,6 +9,7 @@ type InputRow = {
   role: "ADMIN" | "USER";
   email: string | null;
   birthDate: string | null;
+  gender: string | null;
   workType: "ENGINEER" | "OFFICE";
 };
 
@@ -18,6 +19,7 @@ type ResultRow = {
   role: "ADMIN" | "USER";
   email: string | null;
   birthDate: string | null;
+  gender: string | null;
   workType: "ENGINEER" | "OFFICE";
   success: boolean;
   action: "created" | "updated";
@@ -52,6 +54,7 @@ export async function POST(request: NextRequest) {
     const role: "ADMIN" | "USER" = r.role === "ADMIN" ? "ADMIN" : "USER";
     const email = typeof r.email === "string" && r.email.trim() !== "" ? r.email.trim() : null;
     const birthDateInput = typeof r.birthDate === "string" ? r.birthDate.trim() : "";
+    const gender = typeof r.gender === "string" && r.gender.trim() !== "" ? r.gender.trim() : null;
     const workType = parseWorkType(r.workType);
 
     const fail = (error: string, action: ResultRow["action"] = "created") =>
@@ -61,6 +64,7 @@ export async function POST(request: NextRequest) {
         role,
         email,
         birthDate: birthDateInput || null,
+        gender,
         workType,
         success: false,
         action,
@@ -96,9 +100,19 @@ export async function POST(request: NextRequest) {
       try {
         await prisma.user.update({
           where: { loginId },
-          data: { name, role, email, birthDate, workType },
+          data: { name, role, email, birthDate, gender, workType },
         });
-        results.push({ loginId, name, role, email, birthDate: birthDateInput, workType, success: true, action });
+        results.push({
+          loginId,
+          name,
+          role,
+          email,
+          birthDate: birthDateInput,
+          gender,
+          workType,
+          success: true,
+          action,
+        });
       } catch {
         fail("更新に失敗しました", action);
       }
@@ -108,7 +122,16 @@ export async function POST(request: NextRequest) {
     const initialPassword = generateInitialPassword();
     try {
       await prisma.user.create({
-        data: { loginId, name, role, email, birthDate, workType, passwordHash: await hashPassword(initialPassword) },
+        data: {
+          loginId,
+          name,
+          role,
+          email,
+          birthDate,
+          gender,
+          workType,
+          passwordHash: await hashPassword(initialPassword),
+        },
       });
       results.push({
         loginId,
@@ -116,6 +139,7 @@ export async function POST(request: NextRequest) {
         role,
         email,
         birthDate: birthDateInput,
+        gender,
         workType,
         success: true,
         action,

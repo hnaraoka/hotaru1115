@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { WORK_TYPE_OPTIONS } from "@/lib/constants";
+import { WORK_TYPE_OPTIONS, GENDER_OPTIONS } from "@/lib/constants";
 
 export function NewUserForm() {
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +24,7 @@ export function NewUserForm() {
       email: formData.get("email"),
       birthDate: formData.get("birthDate") || null,
       workType: formData.get("workType"),
+      gender: formData.get("gender") || null,
     };
 
     const res = await fetch("/api/admin/users", {
@@ -110,6 +111,22 @@ export function NewUserForm() {
           <label htmlFor="workType">業務 *</label>
           <select id="workType" name="workType" defaultValue="ENGINEER" required>
             {WORK_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="form-row">
+        <div className="field">
+          <label htmlFor="gender">
+            性別 <span className="hint">(月次報告書の性別欄に自動反映されます)</span>
+          </label>
+          <select id="gender" name="gender" defaultValue="">
+            <option value="">選択してください</option>
+            {GENDER_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

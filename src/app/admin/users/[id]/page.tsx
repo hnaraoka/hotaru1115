@@ -35,6 +35,7 @@ export default async function EditUserPage({ params }: Props) {
           engineerStartYear: user.engineerStartYear,
           engineerStartMonth: user.engineerStartMonth,
           workType: user.workType,
+          gender: user.gender,
         }}
         emailConfigured={!!process.env.RESEND_API_KEY}
       />

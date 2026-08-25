@@ -17,6 +17,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     name?: string;
     role?: "ADMIN" | "USER";
     workType?: "ENGINEER" | "OFFICE";
+    gender?: string | null;
     email?: string | null;
     isActive?: boolean;
     birthDate?: Date | null;
@@ -30,6 +31,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (typeof body.name === "string" && body.name.trim() !== "") data.name = body.name.trim();
   if (body.role === "ADMIN" || body.role === "USER") data.role = body.role;
   if (body.workType === "ENGINEER" || body.workType === "OFFICE") data.workType = body.workType;
+  if (typeof body.gender === "string") data.gender = body.gender.trim() === "" ? null : body.gender.trim();
   if (typeof body.email === "string") data.email = body.email.trim() === "" ? null : body.email.trim();
   if (typeof body.isActive === "boolean") data.isActive = body.isActive;
 

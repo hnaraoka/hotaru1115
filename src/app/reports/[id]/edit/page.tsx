@@ -22,7 +22,7 @@ export default async function EditReportPage({ params }: Props) {
 
   const owner = await prisma.user.findUnique({
     where: { id: report.userId },
-    select: { birthDate: true, engineerStartYear: true, engineerStartMonth: true, workType: true },
+    select: { birthDate: true, engineerStartYear: true, engineerStartMonth: true, workType: true, gender: true },
   });
 
   return (
@@ -41,6 +41,7 @@ export default async function EditReportPage({ params }: Props) {
         engineerStartYear={owner?.engineerStartYear ?? null}
         engineerStartMonth={owner?.engineerStartMonth ?? null}
         workType={owner?.workType ?? "ENGINEER"}
+        gender={owner?.gender ?? null}
       />
     </>
   );

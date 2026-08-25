@@ -14,6 +14,7 @@ type PreviewRow = {
   role: "ADMIN" | "USER";
   email: string | null;
   birthDate: string | null;
+  gender: string | null;
   workType: "ENGINEER" | "OFFICE";
 };
 type ResultRow = PreviewRow & {
@@ -46,8 +47,8 @@ function looksLikeHeader(row: string[]): boolean {
 
 const TEMPLATE_CSV = toCsv([
   [...USER_CSV_HEADER],
-  ["yamada.taro", "山田 太郎", "1990-05-10", "エンジニア", "", "一般"],
-  ["sato.hanako", "佐藤 花子", "1985-11-02", "内勤", "sato@example.com", "管理者"],
+  ["yamada.taro", "山田 太郎", "1990-05-10", "男性", "エンジニア", "", "一般"],
+  ["sato.hanako", "佐藤 花子", "1985-11-02", "女性", "内勤", "sato@example.com", "管理者"],
 ]);
 
 function accountCreatedMessage(r: ResultRow): string {
@@ -80,9 +81,10 @@ export function BulkUserForm() {
           loginId: (r[0] ?? "").trim(),
           name: (r[1] ?? "").trim(),
           birthDate: (r[2] ?? "").trim() || null,
-          workType: parseWorkType(r[3] ?? ""),
-          email: (r[4] ?? "").trim() || null,
-          role: parseRole(r[5] ?? ""),
+          gender: (r[3] ?? "").trim() || null,
+          workType: parseWorkType(r[4] ?? ""),
+          email: (r[5] ?? "").trim() || null,
+          role: parseRole(r[6] ?? ""),
         }));
 
       if (parsed.length === 0) {
@@ -180,7 +182,7 @@ export function BulkUserForm() {
     <div className="form" style={{ gap: 16 }}>
       <p className="hint" style={{ margin: 0 }}>
         1行目はヘッダーとして扱われます。列の順番は「ログインID,
-        氏名, 生年月日(YYYY-MM-DD), 業務(エンジニア/内勤), メールアドレス(任意), 権限(管理者/一般)」です。生年月日は必須で、月次報告書の年齢自動計算に使用されます。業務が空欄・不正な値の場合は「エンジニア」として登録されます。ログインIDが既存ユーザーと一致する行は情報を更新し、一致しない行は新規作成します。
+        氏名, 生年月日(YYYY-MM-DD), 性別(任意), 業務(エンジニア/内勤), メールアドレス(任意), 権限(管理者/一般)」です。生年月日は必須で、月次報告書の年齢自動計算に使用されます。性別は月次報告書の性別欄に自動反映されます。業務が空欄・不正な値の場合は「エンジニア」として登録されます。ログインIDが既存ユーザーと一致する行は情報を更新し、一致しない行は新規作成します。
       </p>
       <div className="form-actions" style={{ justifyContent: "flex-start" }}>
         <button
@@ -212,13 +214,14 @@ export function BulkUserForm() {
       {preview.length > 0 && (
         <>
           <SimpleTable
-            columns={["ログインID", "氏名", "生年月日", "業務", "メールアドレス", "権限"]}
+            columns={["ログインID", "氏名", "生年月日", "性別", "業務", "メールアドレス", "権限"]}
             rows={preview.map((row, i) => ({
               key: i,
               cells: [
                 row.loginId || <em key="loginId">未入力</em>,
                 row.name || <em key="name">未入力</em>,
                 row.birthDate ?? <em key="birthDate">未入力</em>,
+                row.gender ?? "",
                 WORK_TYPE_LABEL[row.workType],
                 row.email ?? "",
                 ROLE_LABEL[row.role],

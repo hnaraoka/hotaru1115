@@ -47,6 +47,7 @@ model User {
   name               String
   role               Role      @default(USER)
   workType           WorkType  @default(ENGINEER) // 業務区分（エンジニアは開発工程の入力が必須、内勤は不要）
+  gender             String? // 性別（月次報告書の性別欄に自動反映される）
   email              String?
   isActive           Boolean   @default(true)
   failedLoginCount   Int       @default(0)

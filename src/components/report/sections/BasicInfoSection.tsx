@@ -7,6 +7,8 @@ type BasicInfoSectionProps = SectionProps & {
   computedExperienceYears: string;
   ageAvailable: boolean;
   experienceAvailable: boolean;
+  gender: string | null;
+  genderAvailable: boolean;
 };
 
 export function BasicInfoSection({
@@ -18,6 +20,8 @@ export function BasicInfoSection({
   computedExperienceYears,
   ageAvailable,
   experienceAvailable,
+  gender,
+  genderAvailable,
 }: BasicInfoSectionProps) {
   return (
     <>
@@ -68,11 +72,12 @@ export function BasicInfoSection({
       <div className="form-row">
         <div className={fieldClass("gender")}>
           <label htmlFor="gender">性別</label>
-          <select id="gender" value={state.gender} onChange={(e) => update("gender", e.target.value)}>
-            <option value="">選択してください</option>
-            <option value="男性">男性</option>
-            <option value="女性">女性</option>
-          </select>
+          <input id="gender" value={gender ?? ""} disabled />
+          <span className="hint">
+            {genderAvailable
+              ? "ユーザー情報に登録されている性別が表示されます"
+              : "性別が未登録のため表示できません（管理者に設定を依頼してください）"}
+          </span>
           <FieldErrorText messages={errorsFor("gender")} />
         </div>
         <div className={fieldClass("age")}>

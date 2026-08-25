@@ -31,7 +31,6 @@ function buildInitialState(report?: ReportWithRelations): FormState {
       submittedAt: todayISODate(),
       targetYear: now.getFullYear(),
       targetMonth: now.getMonth() + 1,
-      gender: "",
       clientCompany: "",
       workLocation: "",
       workDays: "",
@@ -65,7 +64,6 @@ function buildInitialState(report?: ReportWithRelations): FormState {
     submittedAt: new Date(report.submittedAt).toISOString().slice(0, 10),
     targetYear: report.targetYear,
     targetMonth: report.targetMonth,
-    gender: report.gender ?? "",
     clientCompany: report.clientCompany,
     workLocation: report.workLocation,
     workDays: report.workDays?.toString() ?? "",
@@ -134,13 +132,14 @@ function buildPayload(
   computedAge: string,
   computedExperienceYears: string,
   workType: "ENGINEER" | "OFFICE",
+  gender: string | null,
 ): unknown {
   const isOfficeWork = workType === "OFFICE";
   return {
     submittedAt: state.submittedAt,
     targetYear: state.targetYear,
     targetMonth: state.targetMonth,
-    gender: state.gender || null,
+    gender: gender || null,
     age: toNullableInt(computedAge),
     experienceYears: toNullableInt(computedExperienceYears),
     clientCompany: state.clientCompany,
@@ -187,12 +186,14 @@ export function ReportForm({
   engineerStartYear,
   engineerStartMonth,
   workType,
+  gender,
 }: {
   report?: ReportWithRelations;
   birthDate: Date | null;
   engineerStartYear: number | null;
   engineerStartMonth: number | null;
   workType: "ENGINEER" | "OFFICE";
+  gender: string | null;
 }) {
   const devProcessesRequired = workType !== "OFFICE";
   const isOfficeWork = workType === "OFFICE";
@@ -291,8 +292,7 @@ export function ReportForm({
     if (!latestReport) return;
     setState((prev) => ({
       ...prev,
-      gender: latestReport.gender ?? prev.gender,
-      // 年齢・経験年数は前回値を引き継がず、自動計算に任せる。
+      // 性別・年齢・経験年数は前回値を引き継がず、ユーザー情報からの自動反映/自動計算に任せる。
       clientCompany: latestReport.clientCompany,
       workLocation: latestReport.workLocation,
       projectName: latestReport.projectName,
@@ -357,8 +357,7 @@ export function ReportForm({
       const next = { ...prev };
       // 対象年・対象月は画面表示時点の値（当月 or 前回の翌月）を維持し、
       // Excelに記載の値では上書きしない。
-      if (parsed.gender !== undefined) next.gender = parsed.gender;
-      // 年齢・経験年数は読み込み元の値を使わず、自動計算に任せる。
+      // 性別・年齢・経験年数は読み込み元の値を使わず、ユーザー情報からの自動反映/自動計算に任せる。
       if (parsed.clientCompany !== undefined) next.clientCompany = parsed.clientCompany;
       if (parsed.workLocation !== undefined) next.workLocation = parsed.workLocation;
       // 月間実労働日数・時間・テレワーク日数・現場日数は月ごとに変わるため、
@@ -416,7 +415,7 @@ export function ReportForm({
     setFormErrors([]);
     setSubmitError(null);
 
-    const payload = buildPayload(state, computedAge, computedExperienceYears, workType);
+    const payload = buildPayload(state, computedAge, computedExperienceYears, workType, gender);
     const parsed = buildReportInputSchema(devProcessesRequired).safeParse(payload);
     if (!parsed.success) {
       const nextFieldErrors: Record<string, string[]> = {};
@@ -497,6 +496,8 @@ export function ReportForm({
         computedExperienceYears={computedExperienceYears}
         ageAvailable={!!birthDate}
         experienceAvailable={!!(engineerStartYear && engineerStartMonth)}
+        gender={gender}
+        genderAvailable={!!gender}
       />
       <ClientWorkSection {...sectionProps} />
       {!isOfficeWork && <TechStackSection {...sectionProps} />}

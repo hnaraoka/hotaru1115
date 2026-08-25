@@ -27,6 +27,11 @@ export const WORK_TYPE_OPTIONS = [
 
 export type WorkTypeValue = (typeof WORK_TYPE_OPTIONS)[number]["value"];
 
+export const GENDER_OPTIONS = [
+  { value: "男性", label: "男性" },
+  { value: "女性", label: "女性" },
+] as const;
+
 export const RATING_OPTIONS = [
   { value: "EXCELLENT", label: "大変良い" },
   { value: "GOOD", label: "良い" },

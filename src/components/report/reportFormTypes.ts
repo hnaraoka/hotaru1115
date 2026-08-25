@@ -5,7 +5,6 @@ export type FormState = {
   submittedAt: string;
   targetYear: number;
   targetMonth: number;
-  gender: string;
   clientCompany: string;
   workLocation: string;
   workDays: string;

@@ -25,6 +25,7 @@ export default async function AdminUsersPage() {
               loginId: u.loginId,
               name: u.name,
               birthDate: u.birthDate,
+              gender: u.gender,
               workType: u.workType,
               email: u.email,
               role: u.role,

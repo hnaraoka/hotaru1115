@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
   const role = body.role === "ADMIN" ? "ADMIN" : "USER";
   const email = typeof body.email === "string" && body.email.trim() !== "" ? body.email.trim() : null;
   const workType = body.workType === "OFFICE" ? "OFFICE" : "ENGINEER";
+  const gender = typeof body.gender === "string" && body.gender.trim() !== "" ? body.gender.trim() : null;
 
   if (!loginId || !name) {
     return NextResponse.json({ error: "ログインIDと氏名は必須です" }, { status: 400 });
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
   const passwordHash = await hashPassword(initialPassword);
 
   const user = await prisma.user.create({
-    data: { loginId, name, role, email, birthDate, workType, passwordHash },
+    data: { loginId, name, role, email, birthDate, workType, gender, passwordHash },
     select: { id: true, loginId: true, name: true, role: true, email: true },
   });
 

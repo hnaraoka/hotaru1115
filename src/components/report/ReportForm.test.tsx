@@ -18,6 +18,7 @@ const noPersonalData = {
   engineerStartYear: null,
   engineerStartMonth: null,
   workType: "ENGINEER" as const,
+  gender: null,
 };
 
 describe("ReportForm (new report)", () => {
@@ -78,6 +79,26 @@ describe("ReportForm (new report)", () => {
     expect(screen.getByText(/エンジニア開始年月が未登録のため計算できません/)).toBeInTheDocument();
   });
 
+  it("shows the gender field as disabled with a missing-data hint when the user has no gender set", async () => {
+    render(<ReportForm {...noPersonalData} />);
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/reports/latest"));
+
+    const gender = screen.getByLabelText("性別") as HTMLInputElement;
+    expect(gender).toBeDisabled();
+    expect(gender.value).toBe("");
+    expect(screen.getByText(/性別が未登録のため表示できません/)).toBeInTheDocument();
+  });
+
+  it("shows the user's registered gender in the disabled field when provided", async () => {
+    render(<ReportForm {...noPersonalData} gender="女性" />);
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/reports/latest"));
+
+    const gender = screen.getByLabelText("性別") as HTMLInputElement;
+    expect(gender).toBeDisabled();
+    expect(gender.value).toBe("女性");
+    expect(screen.getByText(/ユーザー情報に登録されている性別が表示されます/)).toBeInTheDocument();
+  });
+
   it("auto-calculates age and experience years from birthDate/engineerStart props", async () => {
     render(
       <ReportForm
@@ -85,6 +106,7 @@ describe("ReportForm (new report)", () => {
         engineerStartYear={2020}
         engineerStartMonth={4}
         workType="ENGINEER"
+        gender={null}
       />,
     );
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/reports/latest"));
