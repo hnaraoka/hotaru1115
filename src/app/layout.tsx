@@ -30,6 +30,7 @@ export default async function RootLayout({
                 {user.role !== "ADMIN" && <Link href="/">一覧</Link>}
                 {user.role === "ADMIN" && <Link href="/admin/status">提出状況</Link>}
                 {user.role === "ADMIN" && <Link href="/admin/users">管理者設定</Link>}
+                {user.role === "ADMIN" && <Link href="/admin/export">データ出力</Link>}
                 <Link href="/account/profile">プロフィール</Link>
                 <span className="nav-user">{user.name} さん</span>
                 <LogoutButton />
