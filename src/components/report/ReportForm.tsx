@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Report, TechStackItem, WorkAllocation } from "@prisma/client";
 import { buildReportInputSchema, type ReportInput } from "@/lib/reportSchema";
@@ -203,6 +204,7 @@ export function ReportForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [conflictingReportId, setConflictingReportId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [dirty, setDirty] = useState(false);
   const leavingRef = useRef(false);
@@ -414,6 +416,7 @@ export function ReportForm({
     setFieldErrors({});
     setFormErrors([]);
     setSubmitError(null);
+    setConflictingReportId(null);
 
     const payload = buildPayload(state, computedAge, computedExperienceYears, workType, gender);
     const parsed = buildReportInputSchema(devProcessesRequired).safeParse(payload);
@@ -444,6 +447,7 @@ export function ReportForm({
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setSubmitError(data.error ?? "保存に失敗しました");
+      setConflictingReportId(data.conflictingReportId ?? null);
       setSubmitting(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -462,7 +466,17 @@ export function ReportForm({
     <form className="form" onSubmit={handleSubmit}>
       {(hasValidationErrors || submitError) && (
         <div className="error-banner">
-          {submitError && <div>{submitError}</div>}
+          {submitError && (
+            <div>
+              {submitError}
+              {conflictingReportId && (
+                <>
+                  {" "}
+                  <Link href={`/reports/${conflictingReportId}/edit`}>該当の報告書を編集する</Link>
+                </>
+              )}
+            </div>
+          )}
           {hasValidationErrors && (
             <div>入力内容に誤りがあります。赤く表示された項目を確認してください。</div>
           )}

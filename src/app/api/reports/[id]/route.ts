@@ -76,8 +76,24 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json(report);
   } catch (error: unknown) {
     if (isUniqueConstraintError(error)) {
+      // 対象年月をそのユーザーの別の報告書と重複する値に変更しようとした場合。
+      // どの報告書と衝突しているかが分からないと解決しづらいため、該当の
+      // 報告書IDを併せて返し、画面側でリンクできるようにする。
+      const conflicting = await prisma.report.findUnique({
+        where: {
+          userId_targetYear_targetMonth: {
+            userId: session.user.id,
+            targetYear: data.targetYear,
+            targetMonth: data.targetMonth,
+          },
+        },
+        select: { id: true },
+      });
       return NextResponse.json(
-        { error: "対象月の報告書は既に作成されています。" },
+        {
+          error: `${data.targetYear}年${data.targetMonth}月の報告書は既に別に作成されています。`,
+          conflictingReportId: conflicting?.id,
+        },
         { status: 409 },
       );
     }

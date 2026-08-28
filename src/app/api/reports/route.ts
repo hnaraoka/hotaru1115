@@ -46,8 +46,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(report, { status: 201 });
   } catch (error: unknown) {
     if (isUniqueConstraintError(error)) {
+      const conflicting = await prisma.report.findUnique({
+        where: {
+          userId_targetYear_targetMonth: {
+            userId: session.user.id,
+            targetYear: data.targetYear,
+            targetMonth: data.targetMonth,
+          },
+        },
+        select: { id: true },
+      });
       return NextResponse.json(
-        { error: "対象月の報告書は既に作成されています。編集画面から更新してください。" },
+        {
+          error: `${data.targetYear}年${data.targetMonth}月の報告書は既に作成されています。編集画面から更新してください。`,
+          conflictingReportId: conflicting?.id,
+        },
         { status: 409 },
       );
     }
