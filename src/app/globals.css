@@ -499,6 +499,17 @@ select {
   font-size: 13px;
 }
 
+.error-banner a {
+  color: inherit;
+  text-decoration: underline;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.error-banner a:hover {
+  opacity: 0.8;
+}
+
 .reminder-banner {
   display: flex;
   align-items: center;

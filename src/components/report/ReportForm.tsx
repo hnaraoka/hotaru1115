@@ -468,12 +468,11 @@ export function ReportForm({
         <div className="error-banner">
           {submitError && (
             <div>
-              {submitError}
+              <div>{submitError}</div>
               {conflictingReportId && (
-                <>
-                  {" "}
-                  <Link href={`/reports/${conflictingReportId}/edit`}>該当の報告書を編集する</Link>
-                </>
+                <div style={{ marginTop: 4 }}>
+                  <Link href={`/reports/${conflictingReportId}/edit`}>→ 該当の報告書を編集する</Link>
+                </div>
               )}
             </div>
           )}
